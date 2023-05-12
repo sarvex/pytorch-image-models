@@ -37,7 +37,8 @@ class RealLabelsImagenet:
             if self.real_labels[filename]:
                 for k in self.topk:
                     self.is_correct[k].append(
-                        any([p in self.real_labels[filename] for p in pred[:k]]))
+                        any(p in self.real_labels[filename] for p in pred[:k])
+                    )
             self.sample_idx += 1
 
     def get_accuracy(self, k=None):

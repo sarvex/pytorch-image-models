@@ -106,7 +106,7 @@ class Attention2d(torch.nn.Module):
 
         resolution = to_2tuple(resolution)
         if stride is not None:
-            resolution = tuple([math.ceil(r / stride) for r in resolution])
+            resolution = tuple(math.ceil(r / stride) for r in resolution)
             self.stride_conv = ConvNorm(dim, dim, kernel_size=3, stride=stride, groups=dim)
             self.upsample = nn.Upsample(scale_factor=stride, mode='bilinear')
         else:
@@ -146,11 +146,10 @@ class Attention2d(torch.nn.Module):
     def get_attention_biases(self, device: torch.device) -> torch.Tensor:
         if torch.jit.is_tracing() or self.training:
             return self.attention_biases[:, self.attention_bias_idxs]
-        else:
-            device_key = str(device)
-            if device_key not in self.attention_bias_cache:
-                self.attention_bias_cache[device_key] = self.attention_biases[:, self.attention_bias_idxs]
-            return self.attention_bias_cache[device_key]
+        device_key = str(device)
+        if device_key not in self.attention_bias_cache:
+            self.attention_bias_cache[device_key] = self.attention_biases[:, self.attention_bias_idxs]
+        return self.attention_bias_cache[device_key]
 
     def forward(self, x):
         B, C, H, W = x.shape
@@ -213,7 +212,7 @@ class Attention2dDownsample(torch.nn.Module):
         self.scale = key_dim ** -0.5
         self.key_dim = key_dim
         self.resolution = to_2tuple(resolution)
-        self.resolution2 = tuple([math.ceil(r / 2) for r in self.resolution])
+        self.resolution2 = tuple(math.ceil(r / 2) for r in self.resolution)
         self.N = self.resolution[0] * self.resolution[1]
         self.N2 = self.resolution2[0] * self.resolution2[1]
 
@@ -252,11 +251,10 @@ class Attention2dDownsample(torch.nn.Module):
     def get_attention_biases(self, device: torch.device) -> torch.Tensor:
         if torch.jit.is_tracing() or self.training:
             return self.attention_biases[:, self.attention_bias_idxs]
-        else:
-            device_key = str(device)
-            if device_key not in self.attention_bias_cache:
-                self.attention_bias_cache[device_key] = self.attention_biases[:, self.attention_bias_idxs]
-            return self.attention_bias_cache[device_key]
+        device_key = str(device)
+        if device_key not in self.attention_bias_cache:
+            self.attention_bias_cache[device_key] = self.attention_biases[:, self.attention_bias_idxs]
+        return self.attention_bias_cache[device_key]
 
     def forward(self, x):
         B, C, H, W = x.shape
@@ -318,9 +316,7 @@ class Downsample(nn.Module):
 
     def forward(self, x):
         out = self.conv(x)
-        if self.attn is not None:
-            return self.attn(x) + out
-        return out
+        return self.attn(x) + out if self.attn is not None else out
 
 
 class ConvMlpWithNorm(nn.Module):
@@ -474,7 +470,7 @@ class EfficientFormerV2Stage(nn.Module):
                 act_layer=act_layer,
             )
             dim = dim_out
-            resolution = tuple([math.ceil(r / 2) for r in resolution])
+            resolution = tuple(math.ceil(r / 2) for r in resolution)
         else:
             assert dim == dim_out
             self.downsample = nn.Identity()
@@ -545,7 +541,7 @@ class EfficientFormerV2(nn.Module):
         mlp_ratios = to_ntuple(num_stages)(mlp_ratios)
         stages = []
         for i in range(num_stages):
-            curr_resolution = tuple([math.ceil(s / stride) for s in img_size])
+            curr_resolution = tuple(math.ceil(s / stride) for s in img_size)
             stage = EfficientFormerV2Stage(
                 prev_dim,
                 embed_dims[i],
@@ -596,11 +592,10 @@ class EfficientFormerV2(nn.Module):
 
     @torch.jit.ignore
     def group_matcher(self, coarse=False):
-        matcher = dict(
+        return dict(
             stem=r'^stem',  # stem and embed
-            blocks=[(r'^stages\.(\d+)', None), (r'^norm', (99999,))]
+            blocks=[(r'^stages\.(\d+)', None), (r'^norm', (99999,))],
         )
-        return matcher
 
     @torch.jit.ignore
     def set_grad_checkpointing(self, enable=True):
@@ -676,11 +671,13 @@ default_cfgs = generate_default_cfgs({
 
 def _create_efficientformerv2(variant, pretrained=False, **kwargs):
     out_indices = kwargs.pop('out_indices', (0, 1, 2, 3))
-    model = build_model_with_cfg(
-        EfficientFormerV2, variant, pretrained,
+    return build_model_with_cfg(
+        EfficientFormerV2,
+        variant,
+        pretrained,
         feature_cfg=dict(flatten_sequential=True, out_indices=out_indices),
-        **kwargs)
-    return model
+        **kwargs
+    )
 
 
 @register_model

@@ -21,8 +21,7 @@ def get_class_labels(info, label_key='label'):
     if 'label' not in info.features:
         return {}
     class_label = info.features[label_key]
-    class_to_idx = {n: class_label.str2int(n) for n in class_label.names}
-    return class_to_idx
+    return {n: class_label.str2int(n) for n in class_label.names}
 
 
 class ReaderHfds(Reader):

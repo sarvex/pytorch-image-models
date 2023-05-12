@@ -184,11 +184,15 @@ def _create_deit(variant, pretrained=False, distilled=False, **kwargs):
     if kwargs.get('features_only', None):
         raise RuntimeError('features_only not implemented for Vision Transformer models.')
     model_cls = VisionTransformerDistilled if distilled else VisionTransformer
-    model = build_model_with_cfg(
-        model_cls, variant, pretrained,
-        pretrained_filter_fn=partial(checkpoint_filter_fn, adapt_layer_scale=True),
-        **kwargs)
-    return model
+    return build_model_with_cfg(
+        model_cls,
+        variant,
+        pretrained,
+        pretrained_filter_fn=partial(
+            checkpoint_filter_fn, adapt_layer_scale=True
+        ),
+        **kwargs
+    )
 
 
 @register_model
@@ -197,8 +201,9 @@ def deit_tiny_patch16_224(pretrained=False, **kwargs):
     ImageNet-1k weights from https://github.com/facebookresearch/deit.
     """
     model_kwargs = dict(patch_size=16, embed_dim=192, depth=12, num_heads=3, **kwargs)
-    model = _create_deit('deit_tiny_patch16_224', pretrained=pretrained, **model_kwargs)
-    return model
+    return _create_deit(
+        'deit_tiny_patch16_224', pretrained=pretrained, **model_kwargs
+    )
 
 
 @register_model
@@ -207,8 +212,9 @@ def deit_small_patch16_224(pretrained=False, **kwargs):
     ImageNet-1k weights from https://github.com/facebookresearch/deit.
     """
     model_kwargs = dict(patch_size=16, embed_dim=384, depth=12, num_heads=6, **kwargs)
-    model = _create_deit('deit_small_patch16_224', pretrained=pretrained, **model_kwargs)
-    return model
+    return _create_deit(
+        'deit_small_patch16_224', pretrained=pretrained, **model_kwargs
+    )
 
 
 @register_model
@@ -217,8 +223,9 @@ def deit_base_patch16_224(pretrained=False, **kwargs):
     ImageNet-1k weights from https://github.com/facebookresearch/deit.
     """
     model_kwargs = dict(patch_size=16, embed_dim=768, depth=12, num_heads=12, **kwargs)
-    model = _create_deit('deit_base_patch16_224', pretrained=pretrained, **model_kwargs)
-    return model
+    return _create_deit(
+        'deit_base_patch16_224', pretrained=pretrained, **model_kwargs
+    )
 
 
 @register_model
@@ -227,8 +234,9 @@ def deit_base_patch16_384(pretrained=False, **kwargs):
     ImageNet-1k weights from https://github.com/facebookresearch/deit.
     """
     model_kwargs = dict(patch_size=16, embed_dim=768, depth=12, num_heads=12, **kwargs)
-    model = _create_deit('deit_base_patch16_384', pretrained=pretrained, **model_kwargs)
-    return model
+    return _create_deit(
+        'deit_base_patch16_384', pretrained=pretrained, **model_kwargs
+    )
 
 
 @register_model
@@ -237,9 +245,12 @@ def deit_tiny_distilled_patch16_224(pretrained=False, **kwargs):
     ImageNet-1k weights from https://github.com/facebookresearch/deit.
     """
     model_kwargs = dict(patch_size=16, embed_dim=192, depth=12, num_heads=3, **kwargs)
-    model = _create_deit(
-        'deit_tiny_distilled_patch16_224', pretrained=pretrained, distilled=True, **model_kwargs)
-    return model
+    return _create_deit(
+        'deit_tiny_distilled_patch16_224',
+        pretrained=pretrained,
+        distilled=True,
+        **model_kwargs
+    )
 
 
 @register_model
@@ -248,9 +259,12 @@ def deit_small_distilled_patch16_224(pretrained=False, **kwargs):
     ImageNet-1k weights from https://github.com/facebookresearch/deit.
     """
     model_kwargs = dict(patch_size=16, embed_dim=384, depth=12, num_heads=6, **kwargs)
-    model = _create_deit(
-        'deit_small_distilled_patch16_224', pretrained=pretrained, distilled=True, **model_kwargs)
-    return model
+    return _create_deit(
+        'deit_small_distilled_patch16_224',
+        pretrained=pretrained,
+        distilled=True,
+        **model_kwargs
+    )
 
 
 @register_model
@@ -259,9 +273,12 @@ def deit_base_distilled_patch16_224(pretrained=False, **kwargs):
     ImageNet-1k weights from https://github.com/facebookresearch/deit.
     """
     model_kwargs = dict(patch_size=16, embed_dim=768, depth=12, num_heads=12, **kwargs)
-    model = _create_deit(
-        'deit_base_distilled_patch16_224', pretrained=pretrained, distilled=True, **model_kwargs)
-    return model
+    return _create_deit(
+        'deit_base_distilled_patch16_224',
+        pretrained=pretrained,
+        distilled=True,
+        **model_kwargs
+    )
 
 
 @register_model
@@ -270,9 +287,12 @@ def deit_base_distilled_patch16_384(pretrained=False, **kwargs):
     ImageNet-1k weights from https://github.com/facebookresearch/deit.
     """
     model_kwargs = dict(patch_size=16, embed_dim=768, depth=12, num_heads=12, **kwargs)
-    model = _create_deit(
-        'deit_base_distilled_patch16_384', pretrained=pretrained, distilled=True, **model_kwargs)
-    return model
+    return _create_deit(
+        'deit_base_distilled_patch16_384',
+        pretrained=pretrained,
+        distilled=True,
+        **model_kwargs
+    )
 
 
 @register_model
@@ -282,8 +302,9 @@ def deit3_small_patch16_224(pretrained=False, **kwargs):
     """
     model_kwargs = dict(
         patch_size=16, embed_dim=384, depth=12, num_heads=6, no_embed_class=True, init_values=1e-6, **kwargs)
-    model = _create_deit('deit3_small_patch16_224', pretrained=pretrained, **model_kwargs)
-    return model
+    return _create_deit(
+        'deit3_small_patch16_224', pretrained=pretrained, **model_kwargs
+    )
 
 
 @register_model
@@ -293,8 +314,9 @@ def deit3_small_patch16_384(pretrained=False, **kwargs):
     """
     model_kwargs = dict(
         patch_size=16, embed_dim=384, depth=12, num_heads=6, no_embed_class=True, init_values=1e-6, **kwargs)
-    model = _create_deit('deit3_small_patch16_384', pretrained=pretrained, **model_kwargs)
-    return model
+    return _create_deit(
+        'deit3_small_patch16_384', pretrained=pretrained, **model_kwargs
+    )
 
 
 @register_model
@@ -304,8 +326,9 @@ def deit3_medium_patch16_224(pretrained=False, **kwargs):
     """
     model_kwargs = dict(
         patch_size=16, embed_dim=512, depth=12, num_heads=8, no_embed_class=True, init_values=1e-6, **kwargs)
-    model = _create_deit('deit3_medium_patch16_224', pretrained=pretrained, **model_kwargs)
-    return model
+    return _create_deit(
+        'deit3_medium_patch16_224', pretrained=pretrained, **model_kwargs
+    )
 
 
 @register_model
@@ -315,8 +338,9 @@ def deit3_base_patch16_224(pretrained=False, **kwargs):
     """
     model_kwargs = dict(
         patch_size=16, embed_dim=768, depth=12, num_heads=12, no_embed_class=True, init_values=1e-6, **kwargs)
-    model = _create_deit('deit3_base_patch16_224', pretrained=pretrained, **model_kwargs)
-    return model
+    return _create_deit(
+        'deit3_base_patch16_224', pretrained=pretrained, **model_kwargs
+    )
 
 
 @register_model
@@ -326,8 +350,9 @@ def deit3_base_patch16_384(pretrained=False, **kwargs):
     """
     model_kwargs = dict(
         patch_size=16, embed_dim=768, depth=12, num_heads=12, no_embed_class=True, init_values=1e-6, **kwargs)
-    model = _create_deit('deit3_base_patch16_384', pretrained=pretrained, **model_kwargs)
-    return model
+    return _create_deit(
+        'deit3_base_patch16_384', pretrained=pretrained, **model_kwargs
+    )
 
 
 @register_model
@@ -337,8 +362,9 @@ def deit3_large_patch16_224(pretrained=False, **kwargs):
     """
     model_kwargs = dict(
         patch_size=16, embed_dim=1024, depth=24, num_heads=16, no_embed_class=True, init_values=1e-6, **kwargs)
-    model = _create_deit('deit3_large_patch16_224', pretrained=pretrained, **model_kwargs)
-    return model
+    return _create_deit(
+        'deit3_large_patch16_224', pretrained=pretrained, **model_kwargs
+    )
 
 
 @register_model
@@ -348,8 +374,9 @@ def deit3_large_patch16_384(pretrained=False, **kwargs):
     """
     model_kwargs = dict(
         patch_size=16, embed_dim=1024, depth=24, num_heads=16, no_embed_class=True, init_values=1e-6, **kwargs)
-    model = _create_deit('deit3_large_patch16_384', pretrained=pretrained, **model_kwargs)
-    return model
+    return _create_deit(
+        'deit3_large_patch16_384', pretrained=pretrained, **model_kwargs
+    )
 
 
 @register_model
@@ -359,8 +386,9 @@ def deit3_huge_patch14_224(pretrained=False, **kwargs):
     """
     model_kwargs = dict(
         patch_size=14, embed_dim=1280, depth=32, num_heads=16, no_embed_class=True, init_values=1e-6, **kwargs)
-    model = _create_deit('deit3_huge_patch14_224', pretrained=pretrained, **model_kwargs)
-    return model
+    return _create_deit(
+        'deit3_huge_patch14_224', pretrained=pretrained, **model_kwargs
+    )
 
 
 @register_model
@@ -370,8 +398,11 @@ def deit3_small_patch16_224_in21ft1k(pretrained=False, **kwargs):
     """
     model_kwargs = dict(
         patch_size=16, embed_dim=384, depth=12, num_heads=6, no_embed_class=True, init_values=1e-6, **kwargs)
-    model = _create_deit('deit3_small_patch16_224_in21ft1k', pretrained=pretrained, **model_kwargs)
-    return model
+    return _create_deit(
+        'deit3_small_patch16_224_in21ft1k',
+        pretrained=pretrained,
+        **model_kwargs
+    )
 
 
 @register_model
@@ -381,8 +412,11 @@ def deit3_small_patch16_384_in21ft1k(pretrained=False, **kwargs):
     """
     model_kwargs = dict(
         patch_size=16, embed_dim=384, depth=12, num_heads=6, no_embed_class=True, init_values=1e-6, **kwargs)
-    model = _create_deit('deit3_small_patch16_384_in21ft1k', pretrained=pretrained, **model_kwargs)
-    return model
+    return _create_deit(
+        'deit3_small_patch16_384_in21ft1k',
+        pretrained=pretrained,
+        **model_kwargs
+    )
 
 
 @register_model
@@ -392,8 +426,11 @@ def deit3_medium_patch16_224_in21ft1k(pretrained=False, **kwargs):
     """
     model_kwargs = dict(
         patch_size=16, embed_dim=512, depth=12, num_heads=8, no_embed_class=True, init_values=1e-6, **kwargs)
-    model = _create_deit('deit3_medium_patch16_224_in21ft1k', pretrained=pretrained, **model_kwargs)
-    return model
+    return _create_deit(
+        'deit3_medium_patch16_224_in21ft1k',
+        pretrained=pretrained,
+        **model_kwargs
+    )
 
 
 @register_model
@@ -403,8 +440,11 @@ def deit3_base_patch16_224_in21ft1k(pretrained=False, **kwargs):
     """
     model_kwargs = dict(
         patch_size=16, embed_dim=768, depth=12, num_heads=12, no_embed_class=True, init_values=1e-6, **kwargs)
-    model = _create_deit('deit3_base_patch16_224_in21ft1k', pretrained=pretrained, **model_kwargs)
-    return model
+    return _create_deit(
+        'deit3_base_patch16_224_in21ft1k',
+        pretrained=pretrained,
+        **model_kwargs
+    )
 
 
 @register_model
@@ -414,8 +454,11 @@ def deit3_base_patch16_384_in21ft1k(pretrained=False, **kwargs):
     """
     model_kwargs = dict(
         patch_size=16, embed_dim=768, depth=12, num_heads=12, no_embed_class=True, init_values=1e-6, **kwargs)
-    model = _create_deit('deit3_base_patch16_384_in21ft1k', pretrained=pretrained, **model_kwargs)
-    return model
+    return _create_deit(
+        'deit3_base_patch16_384_in21ft1k',
+        pretrained=pretrained,
+        **model_kwargs
+    )
 
 
 @register_model
@@ -425,8 +468,11 @@ def deit3_large_patch16_224_in21ft1k(pretrained=False, **kwargs):
     """
     model_kwargs = dict(
         patch_size=16, embed_dim=1024, depth=24, num_heads=16, no_embed_class=True, init_values=1e-6, **kwargs)
-    model = _create_deit('deit3_large_patch16_224_in21ft1k', pretrained=pretrained, **model_kwargs)
-    return model
+    return _create_deit(
+        'deit3_large_patch16_224_in21ft1k',
+        pretrained=pretrained,
+        **model_kwargs
+    )
 
 
 @register_model
@@ -436,8 +482,11 @@ def deit3_large_patch16_384_in21ft1k(pretrained=False, **kwargs):
     """
     model_kwargs = dict(
         patch_size=16, embed_dim=1024, depth=24, num_heads=16, no_embed_class=True, init_values=1e-6, **kwargs)
-    model = _create_deit('deit3_large_patch16_384_in21ft1k', pretrained=pretrained, **model_kwargs)
-    return model
+    return _create_deit(
+        'deit3_large_patch16_384_in21ft1k',
+        pretrained=pretrained,
+        **model_kwargs
+    )
 
 
 @register_model
@@ -447,5 +496,8 @@ def deit3_huge_patch14_224_in21ft1k(pretrained=False, **kwargs):
     """
     model_kwargs = dict(
         patch_size=14, embed_dim=1280, depth=32, num_heads=16, no_embed_class=True, init_values=1e-6, **kwargs)
-    model = _create_deit('deit3_huge_patch14_224_in21ft1k', pretrained=pretrained, **model_kwargs)
-    return model
+    return _create_deit(
+        'deit3_huge_patch14_224_in21ft1k',
+        pretrained=pretrained,
+        **model_kwargs
+    )

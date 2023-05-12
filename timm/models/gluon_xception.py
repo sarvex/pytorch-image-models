@@ -181,7 +181,7 @@ class Xception65(nn.Module):
 
     @torch.jit.ignore
     def group_matcher(self, coarse=False):
-        matcher = dict(
+        return dict(
             stem=r'^conv[12]|bn[12]',
             blocks=[
                 (r'^mid\.block(\d+)', None),
@@ -189,7 +189,6 @@ class Xception65(nn.Module):
                 (r'^conv[345]|bn[345]', (99,)),
             ],
         )
-        return matcher
 
     @torch.jit.ignore
     def set_grad_checkpointing(self, enable=True):

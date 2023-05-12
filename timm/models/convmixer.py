@@ -55,24 +55,30 @@ class ConvMixer(nn.Module):
             nn.BatchNorm2d(dim)
         )
         self.blocks = nn.Sequential(
-            *[nn.Sequential(
-                    Residual(nn.Sequential(
-                        nn.Conv2d(dim, dim, kernel_size, groups=dim, padding="same"),
-                        act_layer(),
-                        nn.BatchNorm2d(dim)
-                    )),
+            *[
+                nn.Sequential(
+                    Residual(
+                        nn.Sequential(
+                            nn.Conv2d(
+                                dim, dim, kernel_size, groups=dim, padding="same"
+                            ),
+                            act_layer(),
+                            nn.BatchNorm2d(dim),
+                        )
+                    ),
                     nn.Conv2d(dim, dim, kernel_size=1),
                     act_layer(),
-                    nn.BatchNorm2d(dim)
-            ) for i in range(depth)]
+                    nn.BatchNorm2d(dim),
+                )
+                for _ in range(depth)
+            ]
         )
         self.pooling = SelectAdaptivePool2d(pool_type=global_pool, flatten=True)
         self.head = nn.Linear(dim, num_classes) if num_classes > 0 else nn.Identity()
 
     @torch.jit.ignore
     def group_matcher(self, coarse=False):
-        matcher = dict(stem=r'^stem', blocks=r'^blocks\.(\d+)')
-        return matcher
+        return dict(stem=r'^stem', blocks=r'^blocks\.(\d+)')
 
     @torch.jit.ignore
     def set_grad_checkpointing(self, enable=True):

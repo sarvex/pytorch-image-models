@@ -110,7 +110,7 @@ def create_dataset(
             ds_class = _TORCH_BASIC_DS[name]
             use_train = split in _TRAIN_SYNONYM
             ds = ds_class(train=use_train, **torch_kwargs)
-        elif name == 'inaturalist' or name == 'inat':
+        elif name in ['inaturalist', 'inat']:
             assert has_inaturalist, 'Please update to PyTorch 1.10, torchvision 0.11+ for Inaturalist'
             target_type = 'full'
             split_split = split.split('/')
@@ -140,7 +140,7 @@ def create_dataset(
             if split in _EVAL_SYNONYM:
                 split = 'val'
             ds = ImageNet(split=split, **torch_kwargs)
-        elif name == 'image_folder' or name == 'folder':
+        elif name in ['image_folder', 'folder']:
             # in case torchvision ImageFolder is preferred over timm ImageDataset for some reason
             if search_split and os.path.isdir(root):
                 # look for split specific sub-folder in root

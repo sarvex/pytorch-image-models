@@ -80,9 +80,9 @@ class RandomErasing:
             return
         area = img_h * img_w
         count = self.min_count if self.min_count == self.max_count else \
-            random.randint(self.min_count, self.max_count)
+                random.randint(self.min_count, self.max_count)
         for _ in range(count):
-            for attempt in range(10):
+            for _ in range(10):
                 target_area = random.uniform(self.min_area, self.max_area) * area / count
                 aspect_ratio = math.exp(random.uniform(*self.log_aspect_ratio))
                 h = int(round(math.sqrt(target_area * aspect_ratio)))
@@ -112,6 +112,6 @@ class RandomErasing:
 
     def __repr__(self):
         # NOTE simplified state for repr
-        fs = self.__class__.__name__ + f'(p={self.probability}, mode={self.mode}'
+        fs = f'{self.__class__.__name__}(p={self.probability}, mode={self.mode}'
         fs += f', count=({self.min_count}, {self.max_count}))'
         return fs

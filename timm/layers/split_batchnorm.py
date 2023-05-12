@@ -26,16 +26,14 @@ class SplitBatchNorm2d(torch.nn.BatchNorm2d):
             nn.BatchNorm2d(num_features, eps, momentum, affine, track_running_stats) for _ in range(num_splits - 1)])
 
     def forward(self, input: torch.Tensor):
-        if self.training:  # aux BN only relevant while training
-            split_size = input.shape[0] // self.num_splits
-            assert input.shape[0] == split_size * self.num_splits, "batch size must be evenly divisible by num_splits"
-            split_input = input.split(split_size)
-            x = [super().forward(split_input[0])]
-            for i, a in enumerate(self.aux_bn):
-                x.append(a(split_input[i + 1]))
-            return torch.cat(x, dim=0)
-        else:
+        if not self.training:
             return super().forward(input)
+        split_size = input.shape[0] // self.num_splits
+        assert input.shape[0] == split_size * self.num_splits, "batch size must be evenly divisible by num_splits"
+        split_input = input.split(split_size)
+        x = [super().forward(split_input[0])]
+        x.extend(a(split_input[i + 1]) for i, a in enumerate(self.aux_bn))
+        return torch.cat(x, dim=0)
 
 
 def convert_splitbn_model(module, num_splits=2):

@@ -51,12 +51,11 @@ def instance_rms(x, eps: float = 1e-5):
 
 def manual_var(x, dim: Union[int, Sequence[int]], diff_sqm: bool = False):
     xm = x.mean(dim=dim, keepdim=True)
-    if diff_sqm:
-        # difference of squared mean and mean squared, faster on TPU can be less stable
-        var = ((x * x).mean(dim=dim, keepdim=True) - (xm * xm)).clamp(0)
-    else:
-        var = ((x - xm) * (x - xm)).mean(dim=dim, keepdim=True)
-    return var
+    return (
+        ((x * x).mean(dim=dim, keepdim=True) - (xm * xm)).clamp(0)
+        if diff_sqm
+        else ((x - xm) * (x - xm)).mean(dim=dim, keepdim=True)
+    )
 
 
 def group_std(x, groups: int = 32, eps: float = 1e-5, flatten: bool = False):

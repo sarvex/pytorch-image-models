@@ -199,7 +199,8 @@ def main():
         args.num_classes = model.num_classes
 
     _logger.info(
-        f'Model {args.model} created, param count: {sum([m.numel() for m in model.parameters()])}')
+        f'Model {args.model} created, param count: {sum(m.numel() for m in model.parameters())}'
+    )
 
     data_config = resolve_data_config(vars(args), model=model)
     test_time_pool = False
@@ -343,7 +344,7 @@ def main():
     for fmt in args.results_format:
         save_results(df, results_filename, fmt)
 
-    print(f'--result')
+    print('--result')
     print(df.set_index(args.filename_col).to_json(orient='index', indent=4))
 
 

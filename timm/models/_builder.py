@@ -42,22 +42,20 @@ def _resolve_pretrained_source(pretrained_cfg):
         load_from = 'hf-hub'
         assert hf_hub_id
         pretrained_loc = hf_hub_id
+    elif pretrained_file:
+        # file load override is the highest priority if set
+        load_from = 'file'
+        pretrained_loc = pretrained_file
     else:
-        # default source == timm or unspecified
-        if pretrained_file:
-            # file load override is the highest priority if set
-            load_from = 'file'
-            pretrained_loc = pretrained_file
-        else:
-            # next, HF hub is prioritized unless a valid cached version of weights exists already
-            cached_url_valid = check_cached_file(pretrained_url) if pretrained_url else False
-            if hf_hub_id and has_hf_hub(necessary=True) and not cached_url_valid:
-                # hf-hub available as alternate weight source in default_cfg
-                load_from = 'hf-hub'
-                pretrained_loc = hf_hub_id
-            elif pretrained_url:
-                load_from = 'url'
-                pretrained_loc = pretrained_url
+        # next, HF hub is prioritized unless a valid cached version of weights exists already
+        cached_url_valid = check_cached_file(pretrained_url) if pretrained_url else False
+        if hf_hub_id and has_hf_hub(necessary=True) and not cached_url_valid:
+            # hf-hub available as alternate weight source in default_cfg
+            load_from = 'hf-hub'
+            pretrained_loc = hf_hub_id
+        elif pretrained_url:
+            load_from = 'url'
+            pretrained_loc = pretrained_url
 
     if load_from == 'hf-hub' and pretrained_cfg.get('hf_hub_filename', None):
         # if a filename override is set, return tuple for location w/ (hub_id, filename)
@@ -190,7 +188,7 @@ def load_pretrained(
         if isinstance(input_convs, str):
             input_convs = (input_convs,)
         for input_conv_name in input_convs:
-            weight_name = input_conv_name + '.weight'
+            weight_name = f'{input_conv_name}.weight'
             try:
                 state_dict[weight_name] = adapt_input_conv(in_chans, state_dict[weight_name])
                 _logger.info(
@@ -209,16 +207,16 @@ def load_pretrained(
         if num_classes != pretrained_cfg['num_classes']:
             for classifier_name in classifiers:
                 # completely discard fully connected if model num_classes doesn't match pretrained weights
-                state_dict.pop(classifier_name + '.weight', None)
-                state_dict.pop(classifier_name + '.bias', None)
+                state_dict.pop(f'{classifier_name}.weight', None)
+                state_dict.pop(f'{classifier_name}.bias', None)
             strict = False
         elif label_offset > 0:
             for classifier_name in classifiers:
                 # special case for pretrained weights with an extra background class in pretrained weights
-                classifier_weight = state_dict[classifier_name + '.weight']
-                state_dict[classifier_name + '.weight'] = classifier_weight[label_offset:]
-                classifier_bias = state_dict[classifier_name + '.bias']
-                state_dict[classifier_name + '.bias'] = classifier_bias[label_offset:]
+                classifier_weight = state_dict[f'{classifier_name}.weight']
+                state_dict[f'{classifier_name}.weight'] = classifier_weight[label_offset:]
+                classifier_bias = state_dict[f'{classifier_name}.bias']
+                state_dict[f'{classifier_name}.bias'] = classifier_bias[label_offset:]
 
     model.load_state_dict(state_dict, strict=strict)
 

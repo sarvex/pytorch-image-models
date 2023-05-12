@@ -79,16 +79,16 @@ def extract_tarinfos(
         root_name = root.strip(os.path.sep).split(os.path.sep)[-1]
         tar_filenames = glob(os.path.join(root, '*.tar'), recursive=True)
     num_tars = len(tar_filenames)
-    tar_bytes = sum([os.path.getsize(f) for f in tar_filenames])
+    tar_bytes = sum(os.path.getsize(f) for f in tar_filenames)
     assert num_tars, f'No .tar files found at specified path ({root}).'
 
     _logger.info(f'Scanning {tar_bytes/1024**2:.2f}MB of tar files...')
     info = dict(tartrees=[])
     cache_path = ''
     if cache_tarinfo is None:
-        cache_tarinfo = True if tar_bytes > 10*1024**3 else False  # FIXME magic number, 10GB
+        cache_tarinfo = tar_bytes > 10*1024**3
     if cache_tarinfo:
-        cache_filename = '_' + root_name + CACHE_FILENAME_SUFFIX
+        cache_filename = f'_{root_name}{CACHE_FILENAME_SUFFIX}'
         cache_path = os.path.join(root, cache_filename)
     if os.path.exists(cache_path):
         _logger.info(f'Reading tar info from cache file {cache_path}.')
@@ -137,7 +137,7 @@ def extract_tarinfos(
             added += 1
         return added
 
-    _logger.info(f'Collecting samples and building tar states.')
+    _logger.info('Collecting samples and building tar states.')
     for parent_info in info['tartrees']:
         # if tartree has children, we assume all samples are at the child level
         tar_name = None if root_is_tar else parent_info['name']
@@ -158,7 +158,7 @@ def extract_tarinfos(
         sorted_labels = list(sorted(set(labels), key=natural_key))
         class_name_to_idx = {c: idx for idx, c in enumerate(sorted_labels)}
 
-    _logger.info(f'Mapping targets and sorting samples.')
+    _logger.info('Mapping targets and sorting samples.')
     samples_and_targets = [(s, class_name_to_idx[l]) for s, l in zip(samples, labels) if l in class_name_to_idx]
     if sort:
         samples_and_targets = sorted(samples_and_targets, key=lambda k: natural_key(k[0][0].path))
@@ -176,9 +176,7 @@ class ReaderImageInTar(Reader):
     def __init__(self, root, class_map='', cache_tarfiles=True, cache_tarinfo=None):
         super().__init__()
 
-        class_name_to_idx = None
-        if class_map:
-            class_name_to_idx = load_class_map(class_map, root)
+        class_name_to_idx = load_class_map(class_map, root) if class_map else None
         self.root = root
         self.samples, self.targets, self.class_name_to_idx, tarfiles = extract_tarinfos(
             self.root,

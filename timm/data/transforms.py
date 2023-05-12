@@ -129,10 +129,7 @@ class RandomResizedCropAndInterpolation:
 
     def __init__(self, size, scale=(0.08, 1.0), ratio=(3. / 4., 4. / 3.),
                  interpolation='bilinear'):
-        if isinstance(size, (list, tuple)):
-            self.size = tuple(size)
-        else:
-            self.size = (size, size)
+        self.size = tuple(size) if isinstance(size, (list, tuple)) else (size, size)
         if (scale[0] > scale[1]) or (ratio[0] > ratio[1]):
             warnings.warn("range should be of kind (min, max)")
 
@@ -158,7 +155,7 @@ class RandomResizedCropAndInterpolation:
         """
         area = img.size[0] * img.size[1]
 
-        for attempt in range(10):
+        for _ in range(10):
             target_area = random.uniform(*scale) * area
             log_ratio = (math.log(ratio[0]), math.log(ratio[1]))
             aspect_ratio = math.exp(random.uniform(*log_ratio))
@@ -295,10 +292,7 @@ class ResizeKeepRatio:
             interpolation='bilinear',
             fill=0,
     ):
-        if isinstance(size, (list, tuple)):
-            self.size = tuple(size)
-        else:
-            self.size = (size, size)
+        self.size = tuple(size) if isinstance(size, (list, tuple)) else (size, size)
         self.interpolation = str_to_interp_mode(interpolation)
         self.longest = float(longest)
         self.fill = fill

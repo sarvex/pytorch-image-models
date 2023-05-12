@@ -45,8 +45,9 @@ def apply_test_time_pool(model, config, use_test_size=False):
     else:
         df_input_size = model.default_cfg['input_size']
     if config['input_size'][-1] > df_input_size[-1] and config['input_size'][-2] > df_input_size[-2]:
-        _logger.info('Target input size %s > pretrained default %s, using test time pooling' %
-                     (str(config['input_size'][-2:]), str(df_input_size[-2:])))
+        _logger.info(
+            f"Target input size {str(config['input_size'][-2:])} > pretrained default {str(df_input_size[-2:])}, using test time pooling"
+        )
         model = TestTimePoolHead(model, original_pool=model.default_cfg['pool_size'])
         test_time_pool = True
     return model, test_time_pool

@@ -18,10 +18,7 @@ def extract_layer(model, layer):
         layer = layer[1:]
     for l in layer:
         if hasattr(module, l):
-            if not l.isdigit():
-                module = getattr(module, l)
-            else:
-                module = module[int(l)]
+            module = getattr(module, l) if not l.isdigit() else module[int(l)]
         else:
             return module
     return module
@@ -36,17 +33,11 @@ def set_layer(model, layer, val):
     module2 = module
     for l in layer:
         if hasattr(module2, l):
-            if not l.isdigit():
-                module2 = getattr(module2, l)
-            else:
-                module2 = module2[int(l)]
+            module2 = getattr(module2, l) if not l.isdigit() else module2[int(l)]
             lst_index += 1
     lst_index -= 1
     for l in layer[:lst_index]:
-        if not l.isdigit():
-            module = getattr(module, l)
-        else:
-            module = module[int(l)]
+        module = getattr(module, l) if not l.isdigit() else module[int(l)]
     l = layer[lst_index]
     setattr(module, l, val)
 
@@ -65,12 +56,9 @@ def adapt_model_from_string(parent_module, model_string):
     new_module = deepcopy(parent_module)
     for n, m in parent_module.named_modules():
         old_module = extract_layer(parent_module, n)
-        if isinstance(old_module, nn.Conv2d) or isinstance(old_module, Conv2dSame):
-            if isinstance(old_module, Conv2dSame):
-                conv = Conv2dSame
-            else:
-                conv = nn.Conv2d
-            s = state_dict[n + '.weight']
+        if isinstance(old_module, (nn.Conv2d, Conv2dSame)):
+            conv = Conv2dSame if isinstance(old_module, Conv2dSame) else nn.Conv2d
+            s = state_dict[f'{n}.weight']
             in_channels = s[1]
             out_channels = s[0]
             g = 1
@@ -84,19 +72,27 @@ def adapt_model_from_string(parent_module, model_string):
             set_layer(new_module, n, new_conv)
         elif isinstance(old_module, BatchNormAct2d):
             new_bn = BatchNormAct2d(
-                state_dict[n + '.weight'][0], eps=old_module.eps, momentum=old_module.momentum,
-                affine=old_module.affine, track_running_stats=True)
+                state_dict[f'{n}.weight'][0],
+                eps=old_module.eps,
+                momentum=old_module.momentum,
+                affine=old_module.affine,
+                track_running_stats=True,
+            )
             new_bn.drop = old_module.drop
             new_bn.act = old_module.act
             set_layer(new_module, n, new_bn)
         elif isinstance(old_module, nn.BatchNorm2d):
             new_bn = nn.BatchNorm2d(
-                num_features=state_dict[n + '.weight'][0], eps=old_module.eps, momentum=old_module.momentum,
-                affine=old_module.affine, track_running_stats=True)
+                num_features=state_dict[f'{n}.weight'][0],
+                eps=old_module.eps,
+                momentum=old_module.momentum,
+                affine=old_module.affine,
+                track_running_stats=True,
+            )
             set_layer(new_module, n, new_bn)
         elif isinstance(old_module, nn.Linear):
             # FIXME extra checks to ensure this is actually the FC classifier layer and not a diff Linear layer?
-            num_features = state_dict[n + '.weight'][1]
+            num_features = state_dict[f'{n}.weight'][1]
             new_fc = Linear(
                 in_features=num_features, out_features=old_module.out_features, bias=old_module.bias is not None)
             set_layer(new_module, n, new_fc)
@@ -109,5 +105,7 @@ def adapt_model_from_string(parent_module, model_string):
 
 
 def adapt_model_from_file(parent_module, model_variant):
-    adapt_data = pkgutil.get_data(__name__, os.path.join('_pruned', model_variant + '.txt'))
+    adapt_data = pkgutil.get_data(
+        __name__, os.path.join('_pruned', f'{model_variant}.txt')
+    )
     return adapt_model_from_string(parent_module, adapt_data.decode('utf-8').strip())

@@ -25,8 +25,7 @@ _NORM_TYPES = {m for n, m in _NORM_MAP.items()}
 
 def create_norm_layer(layer_name, num_features, **kwargs):
     layer = get_norm_layer(layer_name)
-    layer_instance = layer(num_features, **kwargs)
-    return layer_instance
+    return layer(num_features, **kwargs)
 
 
 def get_norm_layer(norm_layer):
@@ -35,16 +34,13 @@ def get_norm_layer(norm_layer):
 
     # unbind partial fn, so args can be rebound later
     if isinstance(norm_layer, functools.partial):
-        norm_kwargs.update(norm_layer.keywords)
+        norm_kwargs |= norm_layer.keywords
         norm_layer = norm_layer.func
 
     if isinstance(norm_layer, str):
         layer_name = norm_layer.replace('_', '')
         norm_layer = _NORM_MAP.get(layer_name, None)
-    elif norm_layer in _NORM_TYPES:
-        norm_layer = norm_layer
-    elif isinstance(norm_layer, types.FunctionType):
-        # if function type, assume it is a lambda/fn that creates a norm layer
+    elif norm_layer in _NORM_TYPES or isinstance(norm_layer, types.FunctionType):
         norm_layer = norm_layer
     else:
         type_name = norm_layer.__name__.lower().replace('_', '')

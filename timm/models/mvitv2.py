@@ -278,8 +278,8 @@ class MultiScaleAttentionPoolFirst(nn.Module):
         self.head_dim = dim_out // num_heads
         self.scale = self.head_dim ** -0.5
         self.has_cls_token = has_cls_token
-        padding_q = tuple([int(q // 2) for q in kernel_q])
-        padding_kv = tuple([int(kv // 2) for kv in kernel_kv])
+        padding_q = tuple(int(q // 2) for q in kernel_q)
+        padding_kv = tuple(int(kv // 2) for kv in kernel_kv)
 
         self.q = nn.Linear(dim, dim_out, bias=qkv_bias)
         self.k = nn.Linear(dim, dim_out, bias=qkv_bias)
@@ -302,7 +302,7 @@ class MultiScaleAttentionPoolFirst(nn.Module):
             if kernel_kv:
                 self.pool_k = pool_op(kernel_kv, stride_kv, padding_kv)
                 self.pool_v = pool_op(kernel_kv, stride_kv, padding_kv)
-        elif mode == "conv" or mode == "conv_unshared":
+        elif mode in ["conv", "conv_unshared"]:
             dim_conv = dim // num_heads if mode == "conv" else dim
             if kernel_q:
                 self.pool_q = nn.Conv2d(
@@ -448,8 +448,8 @@ class MultiScaleAttention(nn.Module):
         self.head_dim = dim_out // num_heads
         self.scale = self.head_dim ** -0.5
         self.has_cls_token = has_cls_token
-        padding_q = tuple([int(q // 2) for q in kernel_q])
-        padding_kv = tuple([int(kv // 2) for kv in kernel_kv])
+        padding_q = tuple(int(q // 2) for q in kernel_q)
+        padding_kv = tuple(int(kv // 2) for kv in kernel_kv)
 
         self.qkv = nn.Linear(dim, dim_out * 3, bias=qkv_bias)
         self.proj = nn.Linear(dim_out, dim_out)
@@ -470,7 +470,7 @@ class MultiScaleAttention(nn.Module):
             if kernel_kv:
                 self.pool_k = pool_op(kernel_kv, stride_kv, padding_kv)
                 self.pool_v = pool_op(kernel_kv, stride_kv, padding_kv)
-        elif mode == "conv" or mode == "conv_unshared":
+        elif mode in ["conv", "conv_unshared"]:
             dim_conv = dim_out // num_heads if mode == "conv" else dim_out
             if kernel_q:
                 self.pool_q = nn.Conv2d(
@@ -733,7 +733,7 @@ class MultiScaleVitStage(nn.Module):
             dim = out_dims[i]
             self.blocks.append(attention_block)
             if i == 0:
-                feat_size = tuple([size // stride for size, stride in zip(feat_size, stride_q)])
+                feat_size = tuple(size // stride for size, stride in zip(feat_size, stride_q))
 
         self.feat_size = feat_size
 
@@ -853,8 +853,8 @@ class MultiScaleVit(nn.Module):
     def _init_weights(self, m):
         if isinstance(m, nn.Linear):
             trunc_normal_tf_(m.weight, std=0.02)
-            if isinstance(m, nn.Linear) and m.bias is not None:
-                nn.init.constant_(m.bias, 0.0)
+        if isinstance(m, nn.Linear) and m.bias is not None:
+            nn.init.constant_(m.bias, 0.0)
 
     @torch.jit.ignore
     def no_weight_decay(self):
@@ -863,11 +863,10 @@ class MultiScaleVit(nn.Module):
 
     @torch.jit.ignore
     def group_matcher(self, coarse=False):
-        matcher = dict(
+        return dict(
             stem=r'^patch_embed',  # stem and embed
-            blocks=[(r'^stages\.(\d+)', None), (r'^norm', (99999,))]
+            blocks=[(r'^stages\.(\d+)', None), (r'^norm', (99999,))],
         )
-        return matcher
 
     @torch.jit.ignore
     def set_grad_checkpointing(self, enable=True):
@@ -932,7 +931,10 @@ def checkpoint_filter_fn(state_dict, model):
     depth_map = {}
     block_idx = 0
     for stage_idx, d in enumerate(depths):
-        depth_map.update({i: (stage_idx, i - block_idx) for i in range(block_idx, block_idx + d)})
+        depth_map |= {
+            i: (stage_idx, i - block_idx)
+            for i in range(block_idx, block_idx + d)
+        }
         block_idx += d
 
     out_dict = {}

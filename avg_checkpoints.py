@@ -46,7 +46,7 @@ parser.add_argument('--safetensors', action='store_true',
 def checkpoint_metric(checkpoint_path):
     if not checkpoint_path or not os.path.isfile(checkpoint_path):
         return {}
-    print("=> Extracting metric from checkpoint '{}'".format(checkpoint_path))
+    print(f"=> Extracting metric from checkpoint '{checkpoint_path}'")
     checkpoint = torch.load(checkpoint_path, map_location='cpu')
     metric = None
     if 'metric' in checkpoint:
@@ -74,14 +74,14 @@ def main():
         output_ext = ('.safetensors' if args.safetensors else '.pth')
     output = output + output_ext
 
-    if args.safetensors and not output_ext == ".safetensors":
+    if args.safetensors and output_ext != ".safetensors":
         print(
             "Warning: saving weights as safetensors but output file extension is not "
             f"set to '.safetensors': {args.output}"
         )
 
     if os.path.exists(output):
-        print("Error: Output filename ({}) already exists.".format(output))
+        print(f"Error: Output filename ({output}) already exists.")
         exit(1)
 
     pattern = args.input

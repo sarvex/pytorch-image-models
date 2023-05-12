@@ -146,7 +146,9 @@ class GhostNet(nn.Module):
         # building first layer
         stem_chs = make_divisible(16 * width, 4)
         self.conv_stem = nn.Conv2d(in_chans, stem_chs, 3, 2, 1, bias=False)
-        self.feature_info.append(dict(num_chs=stem_chs, reduction=2, module=f'conv_stem'))
+        self.feature_info.append(
+            dict(num_chs=stem_chs, reduction=2, module='conv_stem')
+        )
         self.bn1 = nn.BatchNorm2d(stem_chs)
         self.act1 = nn.ReLU(inplace=True)
         prev_chs = stem_chs
@@ -154,9 +156,8 @@ class GhostNet(nn.Module):
         # building inverted residual blocks
         stages = nn.ModuleList([])
         block = GhostBottleneck
-        stage_idx = 0
         net_stride = 2
-        for cfg in self.cfgs:
+        for stage_idx, cfg in enumerate(self.cfgs):
             layers = []
             s = 1
             for k, exp_size, c, se_ratio, s in cfg:
@@ -169,12 +170,10 @@ class GhostNet(nn.Module):
                 self.feature_info.append(dict(
                     num_chs=prev_chs, reduction=net_stride, module=f'blocks.{stage_idx}'))
             stages.append(nn.Sequential(*layers))
-            stage_idx += 1
-
         out_chs = make_divisible(exp_size * width, 4)
         stages.append(nn.Sequential(ConvBnAct(prev_chs, out_chs, 1)))
         self.pool_dim = prev_chs = out_chs
-        
+
         self.blocks = nn.Sequential(*stages)        
 
         # building last several layers
@@ -189,14 +188,13 @@ class GhostNet(nn.Module):
 
     @torch.jit.ignore
     def group_matcher(self, coarse=False):
-        matcher = dict(
+        return dict(
             stem=r'^conv_stem|bn1',
             blocks=[
                 (r'^blocks\.(\d+)' if coarse else r'^blocks\.(\d+)\.(\d+)', None),
-                (r'conv_head', (99999,))
-            ]
+                (r'conv_head', (99999,)),
+            ],
         )
-        return matcher
 
     @torch.jit.ignore
     def set_grad_checkpointing(self, enable=True):
@@ -283,19 +281,22 @@ def _create_ghostnet(variant, width=1.0, pretrained=False, **kwargs):
 @register_model
 def ghostnet_050(pretrained=False, **kwargs):
     """ GhostNet-0.5x """
-    model = _create_ghostnet('ghostnet_050', width=0.5, pretrained=pretrained, **kwargs)
-    return model
+    return _create_ghostnet(
+        'ghostnet_050', width=0.5, pretrained=pretrained, **kwargs
+    )
 
 
 @register_model
 def ghostnet_100(pretrained=False, **kwargs):
     """ GhostNet-1.0x """
-    model = _create_ghostnet('ghostnet_100', width=1.0, pretrained=pretrained, **kwargs)
-    return model
+    return _create_ghostnet(
+        'ghostnet_100', width=1.0, pretrained=pretrained, **kwargs
+    )
 
 
 @register_model
 def ghostnet_130(pretrained=False, **kwargs):
     """ GhostNet-1.3x """
-    model = _create_ghostnet('ghostnet_130', width=1.3, pretrained=pretrained, **kwargs)
-    return model
+    return _create_ghostnet(
+        'ghostnet_130', width=1.3, pretrained=pretrained, **kwargs
+    )

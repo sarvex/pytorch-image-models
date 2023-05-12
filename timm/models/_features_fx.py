@@ -105,6 +105,4 @@ class GraphExtractNet(nn.Module):
 
     def forward(self, x) -> Union[List[torch.Tensor], torch.Tensor]:
         out = list(self.graph_module(x).values())
-        if self.squeeze_out and len(out) == 1:
-            return out[0]
-        return out
+        return out[0] if self.squeeze_out and len(out) == 1 else out

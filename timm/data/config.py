@@ -17,8 +17,6 @@ def resolve_data_config(
     pretrained_cfg = pretrained_cfg or {}
     if not pretrained_cfg and model is not None and hasattr(model, 'pretrained_cfg'):
         pretrained_cfg = model.pretrained_cfg
-    data_config = {}
-
     # Resolve input/image size
     in_chans = 3
     if args.get('chans', None) is not None:
@@ -33,15 +31,11 @@ def resolve_data_config(
     elif args.get('img_size', None) is not None:
         assert isinstance(args['img_size'], int)
         input_size = (in_chans, args['img_size'], args['img_size'])
-    else:
-        if use_test_size and pretrained_cfg.get('test_input_size', None) is not None:
-            input_size = pretrained_cfg['test_input_size']
-        elif pretrained_cfg.get('input_size', None) is not None:
-            input_size = pretrained_cfg['input_size']
-    data_config['input_size'] = input_size
-
-    # resolve interpolation method
-    data_config['interpolation'] = 'bicubic'
+    elif use_test_size and pretrained_cfg.get('test_input_size', None) is not None:
+        input_size = pretrained_cfg['test_input_size']
+    elif pretrained_cfg.get('input_size', None) is not None:
+        input_size = pretrained_cfg['input_size']
+    data_config = {'input_size': input_size, 'interpolation': 'bicubic'}
     if args.get('interpolation', None):
         data_config['interpolation'] = args['interpolation']
     elif pretrained_cfg.get('interpolation', None):
@@ -75,11 +69,10 @@ def resolve_data_config(
     crop_pct = DEFAULT_CROP_PCT
     if args.get('crop_pct', None):
         crop_pct = args['crop_pct']
-    else:
-        if use_test_size and pretrained_cfg.get('test_crop_pct', None):
-            crop_pct = pretrained_cfg['test_crop_pct']
-        elif pretrained_cfg.get('crop_pct', None):
-            crop_pct = pretrained_cfg['crop_pct']
+    elif use_test_size and pretrained_cfg.get('test_crop_pct', None):
+        crop_pct = pretrained_cfg['test_crop_pct']
+    elif pretrained_cfg.get('crop_pct', None):
+        crop_pct = pretrained_cfg['crop_pct']
     data_config['crop_pct'] = crop_pct
 
     # resolve default crop percentage

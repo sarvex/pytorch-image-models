@@ -130,8 +130,9 @@ class CellStem0(nn.Module):
         x_comb_iter_4_right = self.comb_iter_4_right(x1)
         x_comb_iter_4 = x_comb_iter_4_left + x_comb_iter_4_right
 
-        x_out = torch.cat([x_comb_iter_1, x_comb_iter_2, x_comb_iter_3, x_comb_iter_4], 1)
-        return x_out
+        return torch.cat(
+            [x_comb_iter_1, x_comb_iter_2, x_comb_iter_3, x_comb_iter_4], 1
+        )
 
 
 class CellStem1(nn.Module):
@@ -198,8 +199,9 @@ class CellStem1(nn.Module):
         x_comb_iter_4_right = self.comb_iter_4_right(x_left)
         x_comb_iter_4 = x_comb_iter_4_left + x_comb_iter_4_right
 
-        x_out = torch.cat([x_comb_iter_1, x_comb_iter_2, x_comb_iter_3, x_comb_iter_4], 1)
-        return x_out
+        return torch.cat(
+            [x_comb_iter_1, x_comb_iter_2, x_comb_iter_3, x_comb_iter_4], 1
+        )
 
 
 class FirstCell(nn.Module):
@@ -258,8 +260,17 @@ class FirstCell(nn.Module):
         x_comb_iter_4_left = self.comb_iter_4_left(x_right)
         x_comb_iter_4 = x_comb_iter_4_left + x_right
 
-        x_out = torch.cat([x_left, x_comb_iter_0, x_comb_iter_1, x_comb_iter_2, x_comb_iter_3, x_comb_iter_4], 1)
-        return x_out
+        return torch.cat(
+            [
+                x_left,
+                x_comb_iter_0,
+                x_comb_iter_1,
+                x_comb_iter_2,
+                x_comb_iter_3,
+                x_comb_iter_4,
+            ],
+            1,
+        )
 
 
 class NormalCell(nn.Module):
@@ -304,8 +315,17 @@ class NormalCell(nn.Module):
         x_comb_iter_4_left = self.comb_iter_4_left(x_right)
         x_comb_iter_4 = x_comb_iter_4_left + x_right
 
-        x_out = torch.cat([x_left, x_comb_iter_0, x_comb_iter_1, x_comb_iter_2, x_comb_iter_3, x_comb_iter_4], 1)
-        return x_out
+        return torch.cat(
+            [
+                x_left,
+                x_comb_iter_0,
+                x_comb_iter_1,
+                x_comb_iter_2,
+                x_comb_iter_3,
+                x_comb_iter_4,
+            ],
+            1,
+        )
 
 
 class ReductionCell0(nn.Module):
@@ -352,8 +372,9 @@ class ReductionCell0(nn.Module):
         x_comb_iter_4_right = self.comb_iter_4_right(x_right)
         x_comb_iter_4 = x_comb_iter_4_left + x_comb_iter_4_right
 
-        x_out = torch.cat([x_comb_iter_1, x_comb_iter_2, x_comb_iter_3, x_comb_iter_4], 1)
-        return x_out
+        return torch.cat(
+            [x_comb_iter_1, x_comb_iter_2, x_comb_iter_3, x_comb_iter_4], 1
+        )
 
 
 class ReductionCell1(nn.Module):
@@ -400,8 +421,9 @@ class ReductionCell1(nn.Module):
         x_comb_iter_4_right = self.comb_iter_4_right(x_right)
         x_comb_iter_4 = x_comb_iter_4_left + x_comb_iter_4_right
 
-        x_out = torch.cat([x_comb_iter_1, x_comb_iter_2, x_comb_iter_3, x_comb_iter_4], 1)
-        return x_out
+        return torch.cat(
+            [x_comb_iter_1, x_comb_iter_2, x_comb_iter_3, x_comb_iter_4], 1
+        )
 
 
 class NASNetALarge(nn.Module):
@@ -506,15 +528,14 @@ class NASNetALarge(nn.Module):
 
     @torch.jit.ignore
     def group_matcher(self, coarse=False):
-        matcher = dict(
+        return dict(
             stem=r'^conv0|cell_stem_[01]',
             blocks=[
                 (r'^cell_(\d+)', None),
                 (r'^reduction_cell_0', (6,)),
                 (r'^reduction_cell_1', (12,)),
-            ]
+            ],
         )
-        return matcher
 
     @torch.jit.ignore
     def set_grad_checkpointing(self, enable=True):

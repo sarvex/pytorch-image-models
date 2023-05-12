@@ -57,18 +57,18 @@ def convert(mxnet_name, torch_name):
             assert 'running_var' in mn
         if 'running_mean' in tn:
             assert 'running_mean' in mn
-            
+
         torch_tensor = torch.from_numpy(mv.data().asnumpy())
         torch_params[tn] = torch_tensor
 
     torch_net.load_state_dict(torch_params)
-    torch_filename = './%s.pth' % torch_name
+    torch_filename = f'./{torch_name}.pth'
     torch.save(torch_net.state_dict(), torch_filename)
     with open(torch_filename, 'rb') as f:
         sha_hash = hashlib.sha256(f.read()).hexdigest()
-    final_filename = os.path.splitext(torch_filename)[0] + '-' + sha_hash[:8] + '.pth'
+    final_filename = f'{os.path.splitext(torch_filename)[0]}-{sha_hash[:8]}.pth'
     os.rename(torch_filename, final_filename)
-    print("=> Saved converted model to '{}, SHA256: {}'".format(final_filename, sha_hash))
+    print(f"=> Saved converted model to '{final_filename}, SHA256: {sha_hash}'")
 
 
 def map_mx_to_torch_model(mx_name):
@@ -79,7 +79,7 @@ def map_mx_to_torch_model(mx_name):
         torch_name = torch_name.replace('senet_', 'senet')
     elif torch_name.startswith('inceptionv3'):
         torch_name = torch_name.replace('inceptionv3', 'inception_v3')
-    torch_name = 'gluon_' + torch_name
+    torch_name = f'gluon_{torch_name}'
     return torch_name
 
 

@@ -67,10 +67,7 @@ def _log_info_if(msg, condition):
 
 
 def _parse_ksize(ss):
-    if ss.isdigit():
-        return int(ss)
-    else:
-        return [int(k) for k in ss.split('.')]
+    return int(ss) if ss.isdigit() else [int(k) for k in ss.split('.')]
 
 
 def _decode_block_str(block_str):
@@ -114,16 +111,16 @@ def _decode_block_str(block_str):
             # activation fn
             key = op[0]
             v = op[1:]
-            if v == 're':
-                value = get_act_layer('relu')
-            elif v == 'r6':
-                value = get_act_layer('relu6')
-            elif v == 'hs':
+            if v == 'hs':
                 value = get_act_layer('hard_swish')
-            elif v == 'sw':
-                value = get_act_layer('swish')  # aka SiLU
             elif v == 'mi':
                 value = get_act_layer('mish')
+            elif v == 'r6':
+                value = get_act_layer('relu6')
+            elif v == 're':
+                value = get_act_layer('relu')
+            elif v == 'sw':
+                value = get_act_layer('swish')  # aka SiLU
             else:
                 continue
             options[key] = value
@@ -135,7 +132,7 @@ def _decode_block_str(block_str):
                 options[key] = value
 
     # if act_layer is None, the model default (passed to model init) will be used
-    act_layer = options['n'] if 'n' in options else None
+    act_layer = options.get('n', None)
     exp_kernel_size = _parse_ksize(options['a']) if 'a' in options else 1
     pw_kernel_size = _parse_ksize(options['p']) if 'p' in options else 1
     force_in_chs = int(options['fc']) if 'fc' in options else 0  # FIXME hack to deal with in_chs issue in TPU def
@@ -149,40 +146,40 @@ def _decode_block_str(block_str):
         act_layer=act_layer,
     )
     if block_type == 'ir':
-        block_args.update(dict(
+        block_args |= dict(
             dw_kernel_size=_parse_ksize(options['k']),
             exp_kernel_size=exp_kernel_size,
             pw_kernel_size=pw_kernel_size,
             exp_ratio=float(options['e']),
-            se_ratio=float(options['se']) if 'se' in options else 0.,
+            se_ratio=float(options['se']) if 'se' in options else 0.0,
             noskip=skip is False,
-        ))
+        )
         if 'cc' in options:
             block_args['num_experts'] = int(options['cc'])
-    elif block_type == 'ds' or block_type == 'dsa':
-        block_args.update(dict(
+    elif block_type in ['ds', 'dsa']:
+        block_args |= dict(
             dw_kernel_size=_parse_ksize(options['k']),
             pw_kernel_size=pw_kernel_size,
-            se_ratio=float(options['se']) if 'se' in options else 0.,
+            se_ratio=float(options['se']) if 'se' in options else 0.0,
             pw_act=block_type == 'dsa',
             noskip=block_type == 'dsa' or skip is False,
-        ))
+        )
     elif block_type == 'er':
-        block_args.update(dict(
+        block_args |= dict(
             exp_kernel_size=_parse_ksize(options['k']),
             pw_kernel_size=pw_kernel_size,
             exp_ratio=float(options['e']),
             force_in_chs=force_in_chs,
-            se_ratio=float(options['se']) if 'se' in options else 0.,
+            se_ratio=float(options['se']) if 'se' in options else 0.0,
             noskip=skip is False,
-        ))
+        )
     elif block_type == 'cn':
-        block_args.update(dict(
+        block_args |= dict(
             kernel_size=int(options['k']),
             skip=skip is True,
-        ))
+        )
     else:
-        assert False, 'Unknown block type (%s)' % block_type
+        assert False, f'Unknown block type ({block_type})'
     if 'gs' in options:
         block_args['group_size'] = options['gs']
 
@@ -266,7 +263,7 @@ def decode_arch_def(
                 ba.setdefault('group_size', group_size)
             stack_args.append(ba)
             repeats.append(rep)
-        if fix_first_last and (stack_idx == 0 or stack_idx == len(arch_def) - 1):
+        if fix_first_last and stack_idx in [0, len(arch_def) - 1]:
             arch_args.append(_scale_stage_depth(stack_args, repeats, 1.0, depth_trunc))
         else:
             arch_args.append(_scale_stage_depth(stack_args, repeats, multiplier, depth_trunc))
@@ -335,19 +332,21 @@ class EfficientNetBuilder:
                     ba['se_layer'] = self.se_layer
 
         if bt == 'ir':
-            _log_info_if('  InvertedResidual {}, Args: {}'.format(block_idx, str(ba)), self.verbose)
+            _log_info_if(f'  InvertedResidual {block_idx}, Args: {str(ba)}', self.verbose)
             block = CondConvResidual(**ba) if ba.get('num_experts', 0) else InvertedResidual(**ba)
-        elif bt == 'ds' or bt == 'dsa':
-            _log_info_if('  DepthwiseSeparable {}, Args: {}'.format(block_idx, str(ba)), self.verbose)
+        elif bt in ['ds', 'dsa']:
+            _log_info_if(
+                f'  DepthwiseSeparable {block_idx}, Args: {str(ba)}', self.verbose
+            )
             block = DepthwiseSeparableConv(**ba)
         elif bt == 'er':
-            _log_info_if('  EdgeResidual {}, Args: {}'.format(block_idx, str(ba)), self.verbose)
+            _log_info_if(f'  EdgeResidual {block_idx}, Args: {str(ba)}', self.verbose)
             block = EdgeResidual(**ba)
         elif bt == 'cn':
-            _log_info_if('  ConvBnAct {}, Args: {}'.format(block_idx, str(ba)), self.verbose)
+            _log_info_if(f'  ConvBnAct {block_idx}, Args: {str(ba)}', self.verbose)
             block = ConvBnAct(**ba)
         else:
-            assert False, 'Uknkown block type (%s) while building model.' % bt
+            assert False, f'Uknkown block type ({bt}) while building model.'
 
         self.in_chs = ba['out_chs']  # update in_chs for arg of next block
         return block
@@ -363,7 +362,7 @@ class EfficientNetBuilder:
         """
         _log_info_if('Building model trunk with %d stages...' % len(model_block_args), self.verbose)
         self.in_chs = in_chs
-        total_block_count = sum([len(x) for x in model_block_args])
+        total_block_count = sum(len(x) for x in model_block_args)
         total_block_idx = 0
         current_stride = 2
         current_dilation = 1
@@ -378,14 +377,14 @@ class EfficientNetBuilder:
         # outer list of block_args defines the stacks
         for stack_idx, stack_args in enumerate(model_block_args):
             last_stack = stack_idx + 1 == len(model_block_args)
-            _log_info_if('Stack: {}'.format(stack_idx), self.verbose)
+            _log_info_if(f'Stack: {stack_idx}', self.verbose)
             assert isinstance(stack_args, list)
 
             blocks = []
             # each stack (stage of blocks) contains a list of block arguments
             for block_idx, block_args in enumerate(stack_args):
                 last_block = block_idx + 1 == len(stack_args)
-                _log_info_if(' Block: {}'.format(block_idx), self.verbose)
+                _log_info_if(f' Block: {block_idx}', self.verbose)
 
                 assert block_args['stride'] in (1, 2)
                 if block_idx >= 1:   # only the first block in any stack can have a stride > 1
@@ -395,7 +394,7 @@ class EfficientNetBuilder:
                 if last_block:
                     next_stack_idx = stack_idx + 1
                     extract_features = next_stack_idx >= len(model_block_args) or \
-                        model_block_args[next_stack_idx][0]['stride'] > 1
+                            model_block_args[next_stack_idx][0]['stride'] > 1
 
                 next_dilation = current_dilation
                 if block_args['stride'] > 1:
@@ -403,8 +402,10 @@ class EfficientNetBuilder:
                     if next_output_stride > self.output_stride:
                         next_dilation = current_dilation * block_args['stride']
                         block_args['stride'] = 1
-                        _log_info_if('  Converting stride to dilation to maintain output_stride=={}'.format(
-                            self.output_stride), self.verbose)
+                        _log_info_if(
+                            f'  Converting stride to dilation to maintain output_stride=={self.output_stride}',
+                            self.verbose,
+                        )
                     else:
                         current_stride = next_output_stride
                 block_args['dilation'] = current_dilation
@@ -462,9 +463,7 @@ def _init_weight_goog(m, n='', fix_group_fanout=True):
         nn.init.zeros_(m.bias)
     elif isinstance(m, nn.Linear):
         fan_out = m.weight.size(0)  # fan-out
-        fan_in = 0
-        if 'routing_fn' in n:
-            fan_in = m.weight.size(1)
+        fan_in = m.weight.size(1) if 'routing_fn' in n else 0
         init_range = 1.0 / math.sqrt(fan_in + fan_out)
         nn.init.uniform_(m.weight, -init_range, init_range)
         nn.init.zeros_(m.bias)

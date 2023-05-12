@@ -61,8 +61,7 @@ def get_class_labels(info):
     if 'label' not in info.features:
         return {}
     class_label = info.features['label']
-    class_to_idx = {n: class_label.str2int(n) for n in class_label.names}
-    return class_to_idx
+    return {n: class_label.str2int(n) for n in class_label.names}
 
 
 class ReaderTfds(Reader):
@@ -319,8 +318,7 @@ class ReaderTfds(Reader):
                 sample_count += 1
 
     def __len__(self):
-        num_samples = self._num_samples_per_worker() * self.num_workers
-        return num_samples
+        return self._num_samples_per_worker() * self.num_workers
 
     def _filename(self, index, basename=False, absolute=False):
         assert False, "Not supported"  # no random access to samples

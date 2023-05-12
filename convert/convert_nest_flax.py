@@ -30,18 +30,19 @@ def convert_nest(checkpoint_path, arch):
     assert arch in ['nest_base', 'nest_small', 'nest_tiny'], "Your `arch` is not supported"
 
     flax_dict = checkpoint.load_state_dict(checkpoint_path)['optimizer']['target']
-    state_dict = {}
+    state_dict = {
+        'patch_embed.proj.weight': torch.tensor(
+            flax_dict['PatchEmbedding_0']['Conv_0']['kernel']
+        ).permute(3, 2, 0, 1)
+    }
 
-    # Patch embedding
-    state_dict['patch_embed.proj.weight'] = torch.tensor(
-        flax_dict['PatchEmbedding_0']['Conv_0']['kernel']).permute(3, 2, 0, 1)
     state_dict['patch_embed.proj.bias'] = torch.tensor(flax_dict['PatchEmbedding_0']['Conv_0']['bias'])
-    
+
     # Positional embeddings
     posemb_keys = [k for k in flax_dict.keys() if k.startswith('PositionEmbedding')]
     for i, k in enumerate(posemb_keys):
         state_dict[f'levels.{i}.pos_embed'] = torch.tensor(flax_dict[k]['pos_embedding'])
-    
+
     # Transformer encoders
     depths = arch_depths[arch]
     for level in range(len(depths)):
@@ -93,8 +94,8 @@ def convert_nest(checkpoint_path, arch):
                     flax_dict[f'ConvPool_{level-1}']['LayerNorm_0']['bias'])
 
     # Final norm
-    state_dict[f'norm.weight'] = torch.tensor(flax_dict['LayerNorm_0']['scale'])
-    state_dict[f'norm.bias'] = torch.tensor(flax_dict['LayerNorm_0']['bias'])
+    state_dict['norm.weight'] = torch.tensor(flax_dict['LayerNorm_0']['scale'])
+    state_dict['norm.bias'] = torch.tensor(flax_dict['LayerNorm_0']['bias'])
 
     # Classifier
     state_dict['head.weight'] = torch.tensor(flax_dict['Dense_0']['kernel']).permute(1, 0)

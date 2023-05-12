@@ -296,11 +296,10 @@ class Beit(nn.Module):
 
     @torch.jit.ignore
     def group_matcher(self, coarse=False):
-        matcher = dict(
+        return dict(
             stem=r'^cls_token|pos_embed|patch_embed|rel_pos_bias',  # stem and embed
             blocks=[(r'^blocks\.(\d+)', None), (r'^norm', (99999,))],
         )
-        return matcher
 
     @torch.jit.ignore
     def get_classifier(self):
@@ -441,12 +440,14 @@ def _create_beit(variant, pretrained=False, **kwargs):
     if kwargs.get('features_only', None):
         raise RuntimeError('features_only not implemented for BEiT models.')
 
-    model = build_model_with_cfg(
-        Beit, variant, pretrained,
+    return build_model_with_cfg(
+        Beit,
+        variant,
+        pretrained,
         # FIXME an updated filter fn needed to interpolate rel pos emb if fine tuning to diff model sizes
         pretrained_filter_fn=_beit_checkpoint_filter_fn,
-        **kwargs)
-    return model
+        **kwargs
+    )
 
 
 @register_model
@@ -454,8 +455,9 @@ def beit_base_patch16_224(pretrained=False, **kwargs):
     model_kwargs = dict(
         patch_size=16, embed_dim=768, depth=12, num_heads=12, mlp_ratio=4,
         use_abs_pos_emb=False, use_rel_pos_bias=True, init_values=0.1, **kwargs)
-    model = _create_beit('beit_base_patch16_224', pretrained=pretrained, **model_kwargs)
-    return model
+    return _create_beit(
+        'beit_base_patch16_224', pretrained=pretrained, **model_kwargs
+    )
 
 
 @register_model
@@ -463,8 +465,9 @@ def beit_base_patch16_384(pretrained=False, **kwargs):
     model_kwargs = dict(
         img_size=384, patch_size=16, embed_dim=768, depth=12, num_heads=12,
         use_abs_pos_emb=False, use_rel_pos_bias=True, init_values=0.1, **kwargs)
-    model = _create_beit('beit_base_patch16_384', pretrained=pretrained, **model_kwargs)
-    return model
+    return _create_beit(
+        'beit_base_patch16_384', pretrained=pretrained, **model_kwargs
+    )
 
 
 @register_model
@@ -472,8 +475,9 @@ def beit_large_patch16_224(pretrained=False, **kwargs):
     model_kwargs = dict(
         patch_size=16, embed_dim=1024, depth=24, num_heads=16,
         use_abs_pos_emb=False, use_rel_pos_bias=True, init_values=1e-5,  **kwargs)
-    model = _create_beit('beit_large_patch16_224', pretrained=pretrained, **model_kwargs)
-    return model
+    return _create_beit(
+        'beit_large_patch16_224', pretrained=pretrained, **model_kwargs
+    )
 
 
 @register_model
@@ -481,8 +485,9 @@ def beit_large_patch16_384(pretrained=False, **kwargs):
     model_kwargs = dict(
         img_size=384, patch_size=16, embed_dim=1024, depth=24, num_heads=16,
         use_abs_pos_emb=False, use_rel_pos_bias=True, init_values=1e-5, **kwargs)
-    model = _create_beit('beit_large_patch16_384', pretrained=pretrained, **model_kwargs)
-    return model
+    return _create_beit(
+        'beit_large_patch16_384', pretrained=pretrained, **model_kwargs
+    )
 
 
 @register_model
@@ -490,8 +495,9 @@ def beit_large_patch16_512(pretrained=False, **kwargs):
     model_kwargs = dict(
         img_size=512, patch_size=16, embed_dim=1024, depth=24, num_heads=16,
         use_abs_pos_emb=False, use_rel_pos_bias=True, init_values=1e-5, **kwargs)
-    model = _create_beit('beit_large_patch16_512', pretrained=pretrained, **model_kwargs)
-    return model
+    return _create_beit(
+        'beit_large_patch16_512', pretrained=pretrained, **model_kwargs
+    )
 
 
 @register_model
@@ -499,8 +505,9 @@ def beitv2_base_patch16_224(pretrained=False, **kwargs):
     model_kwargs = dict(
         patch_size=16, embed_dim=768, depth=12, num_heads=12, mlp_ratio=4,
         use_abs_pos_emb=False, use_rel_pos_bias=True, init_values=1e-5, **kwargs)
-    model = _create_beit('beitv2_base_patch16_224', pretrained=pretrained, **model_kwargs)
-    return model
+    return _create_beit(
+        'beitv2_base_patch16_224', pretrained=pretrained, **model_kwargs
+    )
 
 
 @register_model
@@ -508,8 +515,9 @@ def beitv2_large_patch16_224(pretrained=False, **kwargs):
     model_kwargs = dict(
         patch_size=16, embed_dim=1024, depth=24, num_heads=16,
         use_abs_pos_emb=False, use_rel_pos_bias=True, init_values=1e-5,  **kwargs)
-    model = _create_beit('beitv2_large_patch16_224', pretrained=pretrained, **model_kwargs)
-    return model
+    return _create_beit(
+        'beitv2_large_patch16_224', pretrained=pretrained, **model_kwargs
+    )
 
 
 @register_model
@@ -517,8 +525,9 @@ def eva_giant_patch14_224(pretrained=False, **kwargs):
     """ EVA-g model https://arxiv.org/abs/2211.07636 """
     model_kwargs = dict(
         patch_size=14, embed_dim=1408, depth=40, num_heads=16, mlp_ratio=6144 / 1408, **kwargs)
-    model = _create_beit('eva_giant_patch14_224', pretrained=pretrained, **model_kwargs)
-    return model
+    return _create_beit(
+        'eva_giant_patch14_224', pretrained=pretrained, **model_kwargs
+    )
 
 
 @register_model
@@ -526,8 +535,9 @@ def eva_giant_patch14_336(pretrained=False, **kwargs):
     """ EVA-g model https://arxiv.org/abs/2211.07636 """
     model_kwargs = dict(
         patch_size=14, embed_dim=1408, depth=40, num_heads=16, mlp_ratio=6144 / 1408, **kwargs)
-    model = _create_beit('eva_giant_patch14_336', pretrained=pretrained, **model_kwargs)
-    return model
+    return _create_beit(
+        'eva_giant_patch14_336', pretrained=pretrained, **model_kwargs
+    )
 
 
 @register_model
@@ -535,5 +545,6 @@ def eva_giant_patch14_560(pretrained=False, **kwargs):
     """ EVA-g model https://arxiv.org/abs/2211.07636 """
     model_kwargs = dict(
         patch_size=14, embed_dim=1408, depth=40, num_heads=16, mlp_ratio=6144 / 1408, **kwargs)
-    model = _create_beit('eva_giant_patch14_560', pretrained=pretrained, **model_kwargs)
-    return model
+    return _create_beit(
+        'eva_giant_patch14_560', pretrained=pretrained, **model_kwargs
+    )

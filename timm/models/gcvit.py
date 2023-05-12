@@ -236,8 +236,11 @@ class WindowAttentionGlobal(nn.Module):
 def window_partition(x, window_size: Tuple[int, int]):
     B, H, W, C = x.shape
     x = x.view(B, H // window_size[0], window_size[0], W // window_size[1], window_size[1], C)
-    windows = x.permute(0, 1, 3, 2, 4, 5).contiguous().view(-1, window_size[0], window_size[1], C)
-    return windows
+    return (
+        x.permute(0, 1, 3, 2, 4, 5)
+        .contiguous()
+        .view(-1, window_size[0], window_size[1], C)
+    )
 
 
 @register_notrace_function  # reason: int argument is a Proxy
@@ -436,7 +439,10 @@ class GlobalContextVit(nn.Module):
             window_size = to_ntuple(num_stages)(window_size)
         else:
             assert window_ratio is not None
-            window_size = tuple([(img_size[0] // r, img_size[1] // r) for r in to_ntuple(num_stages)(window_ratio)])
+            window_size = tuple(
+                (img_size[0] // r, img_size[1] // r)
+                for r in to_ntuple(num_stages)(window_ratio)
+            )
 
         self.stem = Stem(
             in_chs=in_chans,
@@ -477,17 +483,15 @@ class GlobalContextVit(nn.Module):
             named_apply(partial(self._init_weights, scheme=weight_init), self)
 
     def _init_weights(self, module, name, scheme='vit'):
-        # note Conv2d left as default init
-        if scheme == 'vit':
-            if isinstance(module, nn.Linear):
+        if isinstance(module, nn.Linear):
+            if scheme == 'vit':
                 nn.init.xavier_uniform_(module.weight)
                 if module.bias is not None:
                     if 'mlp' in name:
                         nn.init.normal_(module.bias, std=1e-6)
                     else:
                         nn.init.zeros_(module.bias)
-        else:
-            if isinstance(module, nn.Linear):
+            else:
                 nn.init.normal_(module.weight, std=.02)
                 if module.bias is not None:
                     nn.init.zeros_(module.bias)
@@ -500,11 +504,7 @@ class GlobalContextVit(nn.Module):
 
     @torch.jit.ignore
     def group_matcher(self, coarse=False):
-        matcher = dict(
-            stem=r'^stem',  # stem and embed
-            blocks=r'^stages\.(\d+)'
-        )
-        return matcher
+        return dict(stem=r'^stem', blocks=r'^stages\.(\d+)')  # stem and embed
 
     @torch.jit.ignore
     def set_grad_checkpointing(self, enable=True):
@@ -538,8 +538,7 @@ class GlobalContextVit(nn.Module):
 def _create_gcvit(variant, pretrained=False, **kwargs):
     if kwargs.get('features_only', None):
         raise RuntimeError('features_only not implemented for Vision Transformer models.')
-    model = build_model_with_cfg(GlobalContextVit, variant, pretrained, **kwargs)
-    return model
+    return build_model_with_cfg(GlobalContextVit, variant, pretrained, **kwargs)
 
 
 @register_model

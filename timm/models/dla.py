@@ -88,7 +88,7 @@ class DlaBottleneck(nn.Module):
         super(DlaBottleneck, self).__init__()
         self.stride = stride
         mid_planes = int(math.floor(outplanes * (base_width / 64)) * cardinality)
-        mid_planes = mid_planes // self.expansion
+        mid_planes //= self.expansion
 
         self.conv1 = nn.Conv2d(inplanes, mid_planes, kernel_size=1, bias=False)
         self.bn1 = nn.BatchNorm2d(mid_planes)
@@ -132,7 +132,7 @@ class DlaBottle2neck(nn.Module):
         self.is_first = stride > 1
         self.scale = scale
         mid_planes = int(math.floor(outplanes * (base_width / 64)) * cardinality)
-        mid_planes = mid_planes // self.expansion
+        mid_planes //= self.expansion
         self.width = mid_planes
 
         self.conv1 = nn.Conv2d(inplanes, mid_planes * scale, kernel_size=1, bias=False)
@@ -166,16 +166,13 @@ class DlaBottle2neck(nn.Module):
         spo = []
         sp = spx[0]  # redundant, for torchscript
         for i, (conv, bn) in enumerate(zip(self.convs, self.bns)):
-            if i == 0 or self.is_first:
-                sp = spx[i]
-            else:
-                sp = sp + spx[i]
+            sp = spx[i] if i == 0 or self.is_first else sp + spx[i]
             sp = conv(sp)
             sp = bn(sp)
             sp = self.relu(sp)
             spo.append(sp)
-        if self.scale > 1:
-            if self.pool is not None:  # self.is_first == True, None check for torchscript
+        if self.scale > 1:  # self.is_first == True, None check for torchscript
+            if self.pool is not None:
                 spo.append(self.pool(spx[-1]))
             else:
                 spo.append(spx[-1])
@@ -233,7 +230,7 @@ class DlaTree(nn.Module):
                     nn.BatchNorm2d(out_channels))
             self.root = DlaRoot(root_dim, out_channels, root_kernel_size, root_shortcut)
         else:
-            cargs.update(dict(root_kernel_size=root_kernel_size, root_shortcut=root_shortcut))
+            cargs |= dict(root_kernel_size=root_kernel_size, root_shortcut=root_shortcut)
             self.tree1 = DlaTree(
                 levels - 1, block, in_channels, out_channels, stride, root_dim=0, **cargs)
             self.tree2 = DlaTree(
@@ -319,16 +316,17 @@ class DLA(nn.Module):
 
     @torch.jit.ignore
     def group_matcher(self, coarse=False):
-        matcher = dict(
+        return dict(
             stem=r'^base_layer',
-            blocks=r'^level(\d+)' if coarse else [
+            blocks=r'^level(\d+)'
+            if coarse
+            else [
                 # an unusual arch, this achieves somewhat more granularity without getting super messy
                 (r'^level(\d+)\.tree(\d+)', None),
                 (r'^level(\d+)\.root', (2,)),
-                (r'^level(\d+)', (1,))
-            ]
+                (r'^level(\d+)', (1,)),
+            ],
         )
-        return matcher
 
     @torch.jit.ignore
     def set_grad_checkpointing(self, enable=True):
@@ -360,9 +358,8 @@ class DLA(nn.Module):
             x = F.dropout(x, p=self.drop_rate, training=self.training)
         if pre_logits:
             return x.flatten(1)
-        else:
-            x = self.fc(x)
-            return self.flatten(x)
+        x = self.fc(x)
+        return self.flatten(x)
 
     def forward(self, x):
         x = self.forward_features(x)

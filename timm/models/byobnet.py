@@ -185,6 +185,8 @@ class ByoBlockCfg:
     block_kwargs: Optional[Dict[str, Any]] = None
 
 
+
+
 @dataclass
 class ByoModelCfg:
     blocks: Tuple[Union[ByoBlockCfg, Tuple[ByoBlockCfg, ...]], ...]
@@ -202,10 +204,10 @@ class ByoModelCfg:
 
     # NOTE: these config items will be overridden by the block cfg (per-block) if they are set there
     attn_layer: Optional[str] = None
-    attn_kwargs: dict = field(default_factory=lambda: dict())
+    attn_kwargs: dict = field(default_factory=lambda: {})
     self_attn_layer: Optional[str] = None
-    self_attn_kwargs: dict = field(default_factory=lambda: dict())
-    block_kwargs: Dict[str, Any] = field(default_factory=lambda: dict())
+    self_attn_kwargs: dict = field(default_factory=lambda: {})
+    block_kwargs: Dict[str, Any] = field(default_factory=lambda: {})
 
 
 def _rep_vgg_bcfg(d=(4, 6, 16, 1), wf=(1., 1., 1., 1.), groups=0):
@@ -213,8 +215,10 @@ def _rep_vgg_bcfg(d=(4, 6, 16, 1), wf=(1., 1., 1., 1.), groups=0):
     group_size = 0
     if groups > 0:
         group_size = lambda chs, idx: chs // groups if (idx + 1) % 2 == 0 else 0
-    bcfg = tuple([ByoBlockCfg(type='rep', d=d, c=c * wf, gs=group_size) for d, c, wf in zip(d, c, wf)])
-    return bcfg
+    return tuple(
+        ByoBlockCfg(type='rep', d=d, c=c * wf, gs=group_size)
+        for d, c, wf in zip(d, c, wf)
+    )
 
 
 def interleave_blocks(
@@ -241,11 +245,11 @@ def interleave_blocks(
 model_cfgs = dict(
     gernet_l=ByoModelCfg(
         blocks=(
-            ByoBlockCfg(type='basic', d=1, c=128, s=2, gs=0, br=1.),
-            ByoBlockCfg(type='basic', d=2, c=192, s=2, gs=0, br=1.),
+            ByoBlockCfg(type='basic', d=1, c=128, s=2, gs=0, br=1.0),
+            ByoBlockCfg(type='basic', d=2, c=192, s=2, gs=0, br=1.0),
             ByoBlockCfg(type='bottle', d=6, c=640, s=2, gs=0, br=1 / 4),
-            ByoBlockCfg(type='bottle', d=5, c=640, s=2, gs=1, br=3.),
-            ByoBlockCfg(type='bottle', d=4, c=640, s=1, gs=1, br=3.),
+            ByoBlockCfg(type='bottle', d=5, c=640, s=2, gs=1, br=3.0),
+            ByoBlockCfg(type='bottle', d=4, c=640, s=1, gs=1, br=3.0),
         ),
         stem_chs=32,
         stem_pool=None,
@@ -253,11 +257,11 @@ model_cfgs = dict(
     ),
     gernet_m=ByoModelCfg(
         blocks=(
-            ByoBlockCfg(type='basic', d=1, c=128, s=2, gs=0, br=1.),
-            ByoBlockCfg(type='basic', d=2, c=192, s=2, gs=0, br=1.),
+            ByoBlockCfg(type='basic', d=1, c=128, s=2, gs=0, br=1.0),
+            ByoBlockCfg(type='basic', d=2, c=192, s=2, gs=0, br=1.0),
             ByoBlockCfg(type='bottle', d=6, c=640, s=2, gs=0, br=1 / 4),
-            ByoBlockCfg(type='bottle', d=4, c=640, s=2, gs=1, br=3.),
-            ByoBlockCfg(type='bottle', d=1, c=640, s=1, gs=1, br=3.),
+            ByoBlockCfg(type='bottle', d=4, c=640, s=2, gs=1, br=3.0),
+            ByoBlockCfg(type='bottle', d=1, c=640, s=1, gs=1, br=3.0),
         ),
         stem_chs=32,
         stem_pool=None,
@@ -265,60 +269,56 @@ model_cfgs = dict(
     ),
     gernet_s=ByoModelCfg(
         blocks=(
-            ByoBlockCfg(type='basic', d=1, c=48, s=2, gs=0, br=1.),
-            ByoBlockCfg(type='basic', d=3, c=48, s=2, gs=0, br=1.),
+            ByoBlockCfg(type='basic', d=1, c=48, s=2, gs=0, br=1.0),
+            ByoBlockCfg(type='basic', d=3, c=48, s=2, gs=0, br=1.0),
             ByoBlockCfg(type='bottle', d=7, c=384, s=2, gs=0, br=1 / 4),
-            ByoBlockCfg(type='bottle', d=2, c=560, s=2, gs=1, br=3.),
-            ByoBlockCfg(type='bottle', d=1, c=256, s=1, gs=1, br=3.),
+            ByoBlockCfg(type='bottle', d=2, c=560, s=2, gs=1, br=3.0),
+            ByoBlockCfg(type='bottle', d=1, c=256, s=1, gs=1, br=3.0),
         ),
         stem_chs=13,
         stem_pool=None,
         num_features=1920,
     ),
-
     repvgg_a2=ByoModelCfg(
         blocks=_rep_vgg_bcfg(d=(2, 4, 14, 1), wf=(1.5, 1.5, 1.5, 2.75)),
         stem_type='rep',
         stem_chs=64,
     ),
     repvgg_b0=ByoModelCfg(
-        blocks=_rep_vgg_bcfg(wf=(1., 1., 1., 2.5)),
+        blocks=_rep_vgg_bcfg(wf=(1.0, 1.0, 1.0, 2.5)),
         stem_type='rep',
         stem_chs=64,
     ),
     repvgg_b1=ByoModelCfg(
-        blocks=_rep_vgg_bcfg(wf=(2., 2., 2., 4.)),
+        blocks=_rep_vgg_bcfg(wf=(2.0, 2.0, 2.0, 4.0)),
         stem_type='rep',
         stem_chs=64,
     ),
     repvgg_b1g4=ByoModelCfg(
-        blocks=_rep_vgg_bcfg(wf=(2., 2., 2., 4.), groups=4),
+        blocks=_rep_vgg_bcfg(wf=(2.0, 2.0, 2.0, 4.0), groups=4),
         stem_type='rep',
         stem_chs=64,
     ),
     repvgg_b2=ByoModelCfg(
-        blocks=_rep_vgg_bcfg(wf=(2.5, 2.5, 2.5, 5.)),
+        blocks=_rep_vgg_bcfg(wf=(2.5, 2.5, 2.5, 5.0)),
         stem_type='rep',
         stem_chs=64,
     ),
     repvgg_b2g4=ByoModelCfg(
-        blocks=_rep_vgg_bcfg(wf=(2.5, 2.5, 2.5, 5.), groups=4),
+        blocks=_rep_vgg_bcfg(wf=(2.5, 2.5, 2.5, 5.0), groups=4),
         stem_type='rep',
         stem_chs=64,
     ),
     repvgg_b3=ByoModelCfg(
-        blocks=_rep_vgg_bcfg(wf=(3., 3., 3., 5.)),
+        blocks=_rep_vgg_bcfg(wf=(3.0, 3.0, 3.0, 5.0)),
         stem_type='rep',
         stem_chs=64,
     ),
     repvgg_b3g4=ByoModelCfg(
-        blocks=_rep_vgg_bcfg(wf=(3., 3., 3., 5.), groups=4),
+        blocks=_rep_vgg_bcfg(wf=(3.0, 3.0, 3.0, 5.0), groups=4),
         stem_type='rep',
         stem_chs=64,
     ),
-
-    # 4 x conv stem w/ 2 act, no maxpool, 2,4,6,4 repeats, group size 32 in first 3 blocks
-    # DW convs in last block, 2048 pre-FC, silu act  
     resnet51q=ByoModelCfg(
         blocks=(
             ByoBlockCfg(type='bottle', d=2, c=256, s=1, gs=32, br=0.25),
@@ -332,12 +332,11 @@ model_cfgs = dict(
         num_features=2048,
         act_layer='silu',
     ),
-
-    # 4 x conv stem w/ 4 act, no maxpool, 1,4,6,4 repeats, edge block first, group size 32 in next 2 blocks
-    # DW convs in last block, 4 conv for each bottle block, 2048 pre-FC, silu act  
     resnet61q=ByoModelCfg(
         blocks=(
-            ByoBlockCfg(type='edge', d=1, c=256, s=1, gs=0, br=1.0, block_kwargs=dict()),
+            ByoBlockCfg(
+                type='edge', d=1, c=256, s=1, gs=0, br=1.0, block_kwargs={}
+            ),
             ByoBlockCfg(type='bottle', d=4, c=512, s=2, gs=32, br=0.25),
             ByoBlockCfg(type='bottle', d=6, c=1536, s=2, gs=32, br=0.25),
             ByoBlockCfg(type='bottle', d=4, c=1536, s=2, gs=1, br=1.0),
@@ -349,9 +348,6 @@ model_cfgs = dict(
         act_layer='silu',
         block_kwargs=dict(extra_conv=True),
     ),
-
-    # A series of ResNeXt-26 models w/ one of none, GC, SE, ECA, BAT attn, group size 32, SiLU act,
-    # and a tiered stem w/ maxpool
     resnext26ts=ByoModelCfg(
         blocks=(
             ByoBlockCfg(type='bottle', d=2, c=256, s=1, gs=32, br=0.25),
@@ -415,10 +411,8 @@ model_cfgs = dict(
         stem_pool='maxpool',
         act_layer='silu',
         attn_layer='bat',
-        attn_kwargs=dict(block_size=8)
+        attn_kwargs=dict(block_size=8),
     ),
-
-    # ResNet-32 (2, 3, 3, 2) models w/ no attn, no groups, SiLU act, no pre-fc feat layer, tiered stem w/o maxpool
     resnet32ts=ByoModelCfg(
         blocks=(
             ByoBlockCfg(type='bottle', d=2, c=256, s=1, gs=0, br=0.25),
@@ -432,8 +426,6 @@ model_cfgs = dict(
         num_features=0,
         act_layer='silu',
     ),
-
-    # ResNet-33 (2, 3, 3, 2) models w/ no attn, no groups, SiLU act, 1280 pre-FC feat, tiered stem w/o maxpool
     resnet33ts=ByoModelCfg(
         blocks=(
             ByoBlockCfg(type='bottle', d=2, c=256, s=1, gs=0, br=0.25),
@@ -447,9 +439,6 @@ model_cfgs = dict(
         num_features=1280,
         act_layer='silu',
     ),
-
-    # A series of ResNet-33 (2, 3, 3, 2) models w/ one of GC, SE, ECA attn, no groups, SiLU act, 1280 pre-FC feat 
-    # and a tiered stem w/ no maxpool
     gcresnet33ts=ByoModelCfg(
         blocks=(
             ByoBlockCfg(type='bottle', d=2, c=256, s=1, gs=0, br=0.25),
@@ -492,7 +481,6 @@ model_cfgs = dict(
         act_layer='silu',
         attn_layer='eca',
     ),
-
     gcresnet50t=ByoModelCfg(
         blocks=(
             ByoBlockCfg(type='bottle', d=3, c=256, s=1, br=0.25),
@@ -505,7 +493,6 @@ model_cfgs = dict(
         stem_pool='',
         attn_layer='gca',
     ),
-
     gcresnext50ts=ByoModelCfg(
         blocks=(
             ByoBlockCfg(type='bottle', d=3, c=256, s=1, gs=32, br=0.25),
@@ -520,8 +507,6 @@ model_cfgs = dict(
         act_layer='silu',
         attn_layer='gca',
     ),
-
-    # experimental models, closer to a RegNetZ than a ResNet. Similar to EfficientNets but w/ groups instead of DW
     regnetz_b16=ByoModelCfg(
         blocks=(
             ByoBlockCfg(type='bottle', d=2, c=48, s=2, gs=16, br=3),
@@ -605,8 +590,6 @@ model_cfgs = dict(
         attn_kwargs=dict(rd_ratio=0.25),
         block_kwargs=dict(bottle_in=True, linear_out=True),
     ),
-
-    # experimental EvoNorm configs
     regnetz_b16_evos=ByoModelCfg(
         blocks=(
             ByoBlockCfg(type='bottle', d=2, c=48, s=2, gs=16, br=3),
@@ -907,18 +890,17 @@ def expand_blocks_cfg(stage_blocks_cfg: Union[ByoBlockCfg, Sequence[ByoBlockCfg]
     if not isinstance(stage_blocks_cfg, Sequence):
         stage_blocks_cfg = (stage_blocks_cfg,)
     block_cfgs = []
-    for i, cfg in enumerate(stage_blocks_cfg):
+    for cfg in stage_blocks_cfg:
         block_cfgs += [replace(cfg, d=1) for _ in range(cfg.d)]
     return block_cfgs
 
 
 def num_groups(group_size, channels):
-    if not group_size:  # 0 or None
+    if not group_size:
         return 1  # normal conv with 1 group
-    else:
-        # NOTE group_size == 1 -> depthwise conv
-        assert channels % group_size == 0
-        return channels // group_size
+    # NOTE group_size == 1 -> depthwise conv
+    assert channels % group_size == 0
+    return channels // group_size
 
 
 @dataclass
@@ -1431,16 +1413,15 @@ def create_byob_stem(
         stem = RepVggBlock(in_chs, out_chs, stride=2, layers=layers)
     elif '7x7' in stem_type:
         # 7x7 stem conv as in ResNet
-        if pool_type:
-            stem = Stem(in_chs, out_chs, 7, num_rep=1, pool=pool_type, layers=layers)
-        else:
-            stem = layers.conv_norm_act(in_chs, out_chs, 7, stride=2)
+        stem = (
+            Stem(in_chs, out_chs, 7, num_rep=1, pool=pool_type, layers=layers)
+            if pool_type
+            else layers.conv_norm_act(in_chs, out_chs, 7, stride=2)
+        )
+    elif pool_type:
+        stem = Stem(in_chs, out_chs, 3, num_rep=1, pool=pool_type, layers=layers)
     else:
-        # 3x3 stem conv as in RegNet is the default
-        if pool_type:
-            stem = Stem(in_chs, out_chs, 3, num_rep=1, pool=pool_type, layers=layers)
-        else:
-            stem = layers.conv_norm_act(in_chs, out_chs, 3, stride=2)
+        stem = layers.conv_norm_act(in_chs, out_chs, 3, stride=2)
 
     if isinstance(stem, Stem):
         feature_info = [dict(f, module='.'.join([feat_prefix, f['module']])) for f in stem.feature_info]
@@ -1450,7 +1431,7 @@ def create_byob_stem(
 
 
 def reduce_feat_size(feat_size, stride=2):
-    return None if feat_size is None else tuple([s // stride for s in feat_size])
+    return None if feat_size is None else tuple(s // stride for s in feat_size)
 
 
 def override_kwargs(block_kwargs, model_kwargs):
@@ -1498,7 +1479,7 @@ def update_block_kwargs(block_kwargs: Dict[str, Any], block_cfg: ByoBlockCfg, mo
     block_kwargs['layers'] = layer_fns
 
     # add additional block_kwargs specified in block_cfg or model_cfg, precedence to block if set
-    block_kwargs.update(override_kwargs(block_cfg.block_kwargs, model_cfg.block_kwargs))
+    block_kwargs |= override_kwargs(block_cfg.block_kwargs, model_cfg.block_kwargs)
 
 
 def create_byob_stages(
@@ -1514,7 +1495,7 @@ def create_byob_stages(
     layers = layers or LayerFn()
     feature_info = []
     block_cfgs = [expand_blocks_cfg(s) for s in cfg.blocks]
-    depths = [sum([bc.d for bc in stage_bcs]) for stage_bcs in block_cfgs]
+    depths = [sum(bc.d for bc in stage_bcs) for stage_bcs in block_cfgs]
     dpr = [x.tolist() for x in torch.linspace(0, drop_path_rate, sum(depths)).split(depths)]
     dilation = 1
     net_stride = stem_feat['reduction']
@@ -1571,8 +1552,13 @@ def get_layer_fns(cfg: ByoModelCfg):
     conv_norm_act = partial(ConvNormAct, norm_layer=cfg.norm_layer, act_layer=act)
     attn = partial(get_attn(cfg.attn_layer), **cfg.attn_kwargs) if cfg.attn_layer else None
     self_attn = partial(get_attn(cfg.self_attn_layer), **cfg.self_attn_kwargs) if cfg.self_attn_layer else None
-    layer_fn = LayerFn(conv_norm_act=conv_norm_act, norm_act=norm_act, act=act, attn=attn, self_attn=self_attn)
-    return layer_fn
+    return LayerFn(
+        conv_norm_act=conv_norm_act,
+        norm_act=norm_act,
+        act=act,
+        attn=attn,
+        self_attn=self_attn,
+    )
 
 
 class ByobNet(nn.Module):
@@ -1648,14 +1634,13 @@ class ByobNet(nn.Module):
 
     @torch.jit.ignore
     def group_matcher(self, coarse=False):
-        matcher = dict(
+        return dict(
             stem=r'^stem',
             blocks=[
                 (r'^stages\.(\d+)' if coarse else r'^stages\.(\d+)\.(\d+)', None),
-                (r'^final_conv', (99999,))
-            ]
+                (r'^final_conv', (99999,)),
+            ],
         )
-        return matcher
 
     @torch.jit.ignore
     def set_grad_checkpointing(self, enable=True):

@@ -111,10 +111,7 @@ class GPSA(nn.Module):
         attn_map = self.get_attention(x).mean(0)  # average over batch
         distances = self.rel_indices.squeeze()[:, :, -1] ** .5
         dist = torch.einsum('nm,hnm->h', (distances, attn_map)) / distances.size(0)
-        if return_map:
-            return dist, attn_map
-        else:
-            return dist
+        return (dist, attn_map) if return_map else dist
 
     def local_init(self):
         self.v.weight.data.copy_(torch.eye(self.dim))
@@ -172,10 +169,7 @@ class MHSA(nn.Module):
         distances = distances.to(x.device)
 
         dist = torch.einsum('nm,hnm->h', (distances, attn_map)) / N
-        if return_map:
-            return dist, attn_map
-        else:
-            return dist
+        return (dist, attn_map) if return_map else dist
 
     def forward(self, x):
         B, N, C = x.shape
@@ -347,8 +341,9 @@ def convit_tiny(pretrained=False, **kwargs):
     model_args = dict(
         local_up_to_layer=10, locality_strength=1.0, embed_dim=48,
         num_heads=4, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
-    model = _create_convit(variant='convit_tiny', pretrained=pretrained, **model_args)
-    return model
+    return _create_convit(
+        variant='convit_tiny', pretrained=pretrained, **model_args
+    )
 
 
 @register_model
@@ -356,8 +351,9 @@ def convit_small(pretrained=False, **kwargs):
     model_args = dict(
         local_up_to_layer=10, locality_strength=1.0, embed_dim=48,
         num_heads=9, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
-    model = _create_convit(variant='convit_small', pretrained=pretrained, **model_args)
-    return model
+    return _create_convit(
+        variant='convit_small', pretrained=pretrained, **model_args
+    )
 
 
 @register_model
@@ -365,5 +361,6 @@ def convit_base(pretrained=False, **kwargs):
     model_args = dict(
         local_up_to_layer=10, locality_strength=1.0, embed_dim=48,
         num_heads=16, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
-    model = _create_convit(variant='convit_base', pretrained=pretrained, **model_args)
-    return model
+    return _create_convit(
+        variant='convit_base', pretrained=pretrained, **model_args
+    )

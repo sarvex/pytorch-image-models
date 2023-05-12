@@ -56,16 +56,15 @@ def get_norm_act_layer(norm_layer, act_layer=None):
 
     # unbind partial fn, so args can be rebound later
     if isinstance(norm_layer, functools.partial):
-        norm_act_kwargs.update(norm_layer.keywords)
+        norm_act_kwargs |= norm_layer.keywords
         norm_layer = norm_layer.func
 
     if isinstance(norm_layer, str):
         layer_name = norm_layer.replace('_', '').lower().split('-')[0]
         norm_act_layer = _NORM_ACT_MAP.get(layer_name, None)
-    elif norm_layer in _NORM_ACT_TYPES:
-        norm_act_layer = norm_layer
-    elif isinstance(norm_layer,  types.FunctionType):
-        # if function type, must be a lambda/fn that creates a norm_act layer
+    elif norm_layer in _NORM_ACT_TYPES or isinstance(
+        norm_layer, types.FunctionType
+    ):
         norm_act_layer = norm_layer
     else:
         type_name = norm_layer.__name__.lower()

@@ -124,7 +124,7 @@ def _test_state_dict(weight, bias, input, constructor):
 
     # validate deepcopy() copies all public attributes
     def getPublicAttr(obj):
-        return set(k for k in obj.__dict__ if not k.startswith('_'))
+        return {k for k in obj.__dict__ if not k.startswith('_')}
 
     assert getPublicAttr(optimizer) == getPublicAttr(deepcopy(optimizer))
 
@@ -190,7 +190,7 @@ def _test_model(optimizer, params, device=torch.device('cpu')):
     optimizer = create_optimizer_v2(model, opt=optimizer, **params)
 
     prev_loss = float('inf')
-    for i in range(20):
+    for _ in range(20):
         optimizer.zero_grad()
         output = model(input)
         loss = output.sum()

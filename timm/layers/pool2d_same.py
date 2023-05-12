@@ -64,10 +64,9 @@ def create_pool2d(pool_type, kernel_size, stride=None, **kwargs):
             return MaxPool2dSame(kernel_size, stride=stride, **kwargs)
         else:
             assert False, f'Unsupported pool type {pool_type}'
+    elif pool_type == 'avg':
+        return nn.AvgPool2d(kernel_size, stride=stride, padding=padding, **kwargs)
+    elif pool_type == 'max':
+        return nn.MaxPool2d(kernel_size, stride=stride, padding=padding, **kwargs)
     else:
-        if pool_type == 'avg':
-            return nn.AvgPool2d(kernel_size, stride=stride, padding=padding, **kwargs)
-        elif pool_type == 'max':
-            return nn.MaxPool2d(kernel_size, stride=stride, padding=padding, **kwargs)
-        else:
-            assert False, f'Unsupported pool type {pool_type}'
+        assert False, f'Unsupported pool type {pool_type}'

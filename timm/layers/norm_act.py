@@ -70,19 +70,17 @@ class BatchNormAct2d(nn.BatchNorm2d):
         # exponential_average_factor is set to self.momentum
         # (when it is available) only so that it gets updated
         # in ONNX graph when this node is exported to ONNX.
-        if self.momentum is None:
-            exponential_average_factor = 0.0
-        else:
-            exponential_average_factor = self.momentum
-
-        if self.training and self.track_running_stats:
-            # TODO: if statement only here to tell the jit to skip emitting this when it is None
-            if self.num_batches_tracked is not None:  # type: ignore[has-type]
-                self.num_batches_tracked.add_(1)  # type: ignore[has-type]
-                if self.momentum is None:  # use cumulative moving average
-                    exponential_average_factor = 1.0 / float(self.num_batches_tracked)
-                else:  # use exponential moving average
-                    exponential_average_factor = self.momentum
+        exponential_average_factor = 0.0 if self.momentum is None else self.momentum
+        if (
+            self.training
+            and self.track_running_stats
+            and self.num_batches_tracked is not None
+        ):
+            self.num_batches_tracked.add_(1)  # type: ignore[has-type]
+            if self.momentum is None:  # use cumulative moving average
+                exponential_average_factor = 1.0 / float(self.num_batches_tracked)
+            else:  # use exponential moving average
+                exponential_average_factor = self.momentum
 
         r"""
         Decide whether the mini-batch stats should be used for normalization rather than the buffers.
@@ -213,7 +211,7 @@ class FrozenBatchNormAct2d(torch.nn.Module):
         unexpected_keys: List[str],
         error_msgs: List[str],
     ):
-        num_batches_tracked_key = prefix + "num_batches_tracked"
+        num_batches_tracked_key = f"{prefix}num_batches_tracked"
         if num_batches_tracked_key in state_dict:
             del state_dict[num_batches_tracked_key]
 

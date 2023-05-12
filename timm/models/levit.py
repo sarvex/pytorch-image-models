@@ -212,11 +212,10 @@ class Attention(nn.Module):
     def get_attention_biases(self, device: torch.device) -> torch.Tensor:
         if torch.jit.is_tracing() or self.training:
             return self.attention_biases[:, self.attention_bias_idxs]
-        else:
-            device_key = str(device)
-            if device_key not in self.attention_bias_cache:
-                self.attention_bias_cache[device_key] = self.attention_biases[:, self.attention_bias_idxs]
-            return self.attention_bias_cache[device_key]
+        device_key = str(device)
+        if device_key not in self.attention_bias_cache:
+            self.attention_bias_cache[device_key] = self.attention_biases[:, self.attention_bias_idxs]
+        return self.attention_bias_cache[device_key]
 
     def forward(self, x):  # x (B,C,H,W)
         if self.use_conv:
@@ -312,11 +311,10 @@ class AttentionDownsample(nn.Module):
     def get_attention_biases(self, device: torch.device) -> torch.Tensor:
         if torch.jit.is_tracing() or self.training:
             return self.attention_biases[:, self.attention_bias_idxs]
-        else:
-            device_key = str(device)
-            if device_key not in self.attention_bias_cache:
-                self.attention_bias_cache[device_key] = self.attention_biases[:, self.attention_bias_idxs]
-            return self.attention_bias_cache[device_key]
+        device_key = str(device)
+        if device_key not in self.attention_bias_cache:
+            self.attention_bias_cache[device_key] = self.attention_biases[:, self.attention_bias_idxs]
+        return self.attention_bias_cache[device_key]
 
     def forward(self, x):
         if self.use_conv:
@@ -500,9 +498,8 @@ class LevitStage(nn.Module):
             assert in_dim == out_dim
             self.downsample = nn.Identity()
 
-        blocks = []
-        for _ in range(depth):
-            blocks += [LevitBlock(
+        blocks = [
+            LevitBlock(
                 out_dim,
                 key_dim,
                 num_heads=num_heads,
@@ -513,7 +510,9 @@ class LevitStage(nn.Module):
                 resolution=resolution,
                 use_conv=use_conv,
                 drop_path=drop_path,
-            )]
+            )
+            for _ in range(depth)
+        ]
         self.blocks = nn.Sequential(*blocks)
 
     def forward(self, x):
@@ -579,7 +578,9 @@ class Levit(nn.Module):
             else:
                 self.stem = Stem8(in_chans, embed_dim[0], act_layer=act_layer)
             stride = self.stem.stride
-        resolution = tuple([i // p for i, p in zip(to_2tuple(img_size), to_2tuple(stride))])
+        resolution = tuple(
+            i // p for i, p in zip(to_2tuple(img_size), to_2tuple(stride))
+        )
 
         in_dim = embed_dim[0]
         stages = []
@@ -601,7 +602,7 @@ class Levit(nn.Module):
                 drop_path=drop_path_rate
             )]
             stride *= stage_stride
-            resolution = tuple([(r - 1) // stage_stride + 1 for r in resolution])
+            resolution = tuple((r - 1) // stage_stride + 1 for r in resolution)
             self.feature_info += [dict(num_chs=embed_dim[i], reduction=stride, module=f'stages.{i}')]
             in_dim = embed_dim[i]
         self.stages = nn.Sequential(*stages)
@@ -615,11 +616,10 @@ class Levit(nn.Module):
 
     @torch.jit.ignore
     def group_matcher(self, coarse=False):
-        matcher = dict(
+        return dict(
             stem=r'^cls_token|pos_embed|patch_embed',  # stem and embed
-            blocks=[(r'^blocks\.(\d+)', None), (r'^norm', (99999,))]
+            blocks=[(r'^blocks\.(\d+)', None), (r'^norm', (99999,))],
         )
-        return matcher
 
     @torch.jit.ignore
     def set_grad_checkpointing(self, enable=True):
@@ -748,9 +748,8 @@ model_cfgs = dict(
 def create_levit(variant, cfg_variant=None, pretrained=False, distilled=True, **kwargs):
     is_conv = '_conv' in variant
     out_indices = kwargs.pop('out_indices', (0, 1, 2))
-    if kwargs.get('features_only', None):
-        if not is_conv:
-            raise RuntimeError('features_only not implemented for LeVit in non-convolutional mode.')
+    if kwargs.get('features_only', None) and not is_conv:
+        raise RuntimeError('features_only not implemented for LeVit in non-convolutional mode.')
     if cfg_variant is None:
         if variant in model_cfgs:
             cfg_variant = variant
@@ -758,7 +757,7 @@ def create_levit(variant, cfg_variant=None, pretrained=False, distilled=True, **
             cfg_variant = variant.replace('_conv', '')
 
     model_cfg = dict(model_cfgs[cfg_variant], **kwargs)
-    model = build_model_with_cfg(
+    return build_model_with_cfg(
         LevitDistilled if distilled else Levit,
         variant,
         pretrained,
@@ -766,7 +765,6 @@ def create_levit(variant, cfg_variant=None, pretrained=False, distilled=True, **
         feature_cfg=dict(flatten_sequential=True, out_indices=out_indices),
         **model_cfg,
     )
-    return model
 
 
 def _cfg(url='', **kwargs):

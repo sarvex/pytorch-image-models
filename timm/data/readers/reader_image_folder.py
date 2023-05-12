@@ -65,9 +65,7 @@ class ReaderImageFolder(Reader):
         super().__init__()
 
         self.root = root
-        class_to_idx = None
-        if class_map:
-            class_to_idx = load_class_map(class_map, root)
+        class_to_idx = load_class_map(class_map, root) if class_map else None
         self.samples, self.class_to_idx = find_images_and_targets(root, class_to_idx=class_to_idx)
         if len(self.samples) == 0:
             raise RuntimeError(

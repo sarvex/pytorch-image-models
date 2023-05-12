@@ -9,7 +9,9 @@ def load_class_map(map_or_filename, root=''):
     class_map_path = map_or_filename
     if not os.path.exists(class_map_path):
         class_map_path = os.path.join(root, class_map_path)
-        assert os.path.exists(class_map_path), 'Cannot locate specified class map file (%s)' % map_or_filename
+        assert os.path.exists(
+            class_map_path
+        ), f'Cannot locate specified class map file ({map_or_filename})'
     class_map_ext = os.path.splitext(map_or_filename)[-1].lower()
     if class_map_ext == '.txt':
         with open(class_map_path) as f:

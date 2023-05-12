@@ -113,14 +113,13 @@ def get_act_fn(name: Union[Callable, str] = 'relu'):
         return None
     if isinstance(name, Callable):
         return name
-    if not (is_no_jit() or is_exportable() or is_scriptable()):
-        # If not exporting or scripting the model, first look for a memory-efficient version with
-        # custom autograd, then fallback
-        if name in _ACT_FN_ME:
-            return _ACT_FN_ME[name]
-    if not (is_no_jit() or is_exportable()):
-        if name in _ACT_FN_JIT:
-            return _ACT_FN_JIT[name]
+    if (
+        not (is_no_jit() or is_exportable() or is_scriptable())
+        and name in _ACT_FN_ME
+    ):
+        return _ACT_FN_ME[name]
+    if not is_no_jit() and not is_exportable() and name in _ACT_FN_JIT:
+        return _ACT_FN_JIT[name]
     return _ACT_FN_DEFAULT[name]
 
 
@@ -134,12 +133,13 @@ def get_act_layer(name: Union[Type[nn.Module], str] = 'relu'):
     if not isinstance(name, str):
         # callable, module, etc
         return name
-    if not (is_no_jit() or is_exportable() or is_scriptable()):
-        if name in _ACT_LAYER_ME:
-            return _ACT_LAYER_ME[name]
-    if not (is_no_jit() or is_exportable()):
-        if name in _ACT_LAYER_JIT:
-            return _ACT_LAYER_JIT[name]
+    if (
+        not (is_no_jit() or is_exportable() or is_scriptable())
+        and name in _ACT_LAYER_ME
+    ):
+        return _ACT_LAYER_ME[name]
+    if not is_no_jit() and not is_exportable() and name in _ACT_LAYER_JIT:
+        return _ACT_LAYER_JIT[name]
     return _ACT_LAYER_DEFAULT[name]
 
 

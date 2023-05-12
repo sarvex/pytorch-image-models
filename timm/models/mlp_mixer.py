@@ -335,20 +335,19 @@ def _init_weights(module: nn.Module, name: str, head_bias: float = 0., flax=Fals
         if name.startswith('head'):
             nn.init.zeros_(module.weight)
             nn.init.constant_(module.bias, head_bias)
+        elif flax:
+            # Flax defaults
+            lecun_normal_(module.weight)
+            if module.bias is not None:
+                nn.init.zeros_(module.bias)
         else:
-            if flax:
-                # Flax defaults
-                lecun_normal_(module.weight)
-                if module.bias is not None:
+            # like MLP init in vit (my original init)
+            nn.init.xavier_uniform_(module.weight)
+            if module.bias is not None:
+                if 'mlp' in name:
+                    nn.init.normal_(module.bias, std=1e-6)
+                else:
                     nn.init.zeros_(module.bias)
-            else:
-                # like MLP init in vit (my original init)
-                nn.init.xavier_uniform_(module.weight)
-                if module.bias is not None:
-                    if 'mlp' in name:
-                        nn.init.normal_(module.bias, std=1e-6)
-                    else:
-                        nn.init.zeros_(module.bias)
     elif isinstance(module, nn.Conv2d):
         lecun_normal_(module.weight)
         if module.bias is not None:
@@ -364,30 +363,32 @@ def _init_weights(module: nn.Module, name: str, head_bias: float = 0., flax=Fals
 
 def checkpoint_filter_fn(state_dict, model):
     """ Remap checkpoints if needed """
-    if 'patch_embed.proj.weight' in state_dict:
-        # Remap FB ResMlp models -> timm
-        out_dict = {}
-        for k, v in state_dict.items():
-            k = k.replace('patch_embed.', 'stem.')
-            k = k.replace('attn.', 'linear_tokens.')
-            k = k.replace('mlp.', 'mlp_channels.')
-            k = k.replace('gamma_', 'ls')
-            if k.endswith('.alpha') or k.endswith('.beta'):
-                v = v.reshape(1, 1, -1)
-            out_dict[k] = v
-        return out_dict
-    return state_dict
+    if 'patch_embed.proj.weight' not in state_dict:
+        return state_dict
+    # Remap FB ResMlp models -> timm
+    out_dict = {}
+    for k, v in state_dict.items():
+        k = k.replace('patch_embed.', 'stem.')
+        k = k.replace('attn.', 'linear_tokens.')
+        k = k.replace('mlp.', 'mlp_channels.')
+        k = k.replace('gamma_', 'ls')
+        if k.endswith('.alpha') or k.endswith('.beta'):
+            v = v.reshape(1, 1, -1)
+        out_dict[k] = v
+    return out_dict
 
 
 def _create_mixer(variant, pretrained=False, **kwargs):
     if kwargs.get('features_only', None):
         raise RuntimeError('features_only not implemented for MLP-Mixer models.')
 
-    model = build_model_with_cfg(
-        MlpMixer, variant, pretrained,
+    return build_model_with_cfg(
+        MlpMixer,
+        variant,
+        pretrained,
         pretrained_filter_fn=checkpoint_filter_fn,
-        **kwargs)
-    return model
+        **kwargs
+    )
 
 
 @register_model
@@ -396,8 +397,7 @@ def mixer_s32_224(pretrained=False, **kwargs):
     Paper: 'MLP-Mixer: An all-MLP Architecture for Vision' - https://arxiv.org/abs/2105.01601
     """
     model_args = dict(patch_size=32, num_blocks=8, embed_dim=512, **kwargs)
-    model = _create_mixer('mixer_s32_224', pretrained=pretrained, **model_args)
-    return model
+    return _create_mixer('mixer_s32_224', pretrained=pretrained, **model_args)
 
 
 @register_model
@@ -406,8 +406,7 @@ def mixer_s16_224(pretrained=False, **kwargs):
     Paper:  'MLP-Mixer: An all-MLP Architecture for Vision' - https://arxiv.org/abs/2105.01601
     """
     model_args = dict(patch_size=16, num_blocks=8, embed_dim=512, **kwargs)
-    model = _create_mixer('mixer_s16_224', pretrained=pretrained, **model_args)
-    return model
+    return _create_mixer('mixer_s16_224', pretrained=pretrained, **model_args)
 
 
 @register_model
@@ -416,8 +415,7 @@ def mixer_b32_224(pretrained=False, **kwargs):
     Paper:  'MLP-Mixer: An all-MLP Architecture for Vision' - https://arxiv.org/abs/2105.01601
     """
     model_args = dict(patch_size=32, num_blocks=12, embed_dim=768, **kwargs)
-    model = _create_mixer('mixer_b32_224', pretrained=pretrained, **model_args)
-    return model
+    return _create_mixer('mixer_b32_224', pretrained=pretrained, **model_args)
 
 
 @register_model
@@ -426,8 +424,7 @@ def mixer_b16_224(pretrained=False, **kwargs):
     Paper:  'MLP-Mixer: An all-MLP Architecture for Vision' - https://arxiv.org/abs/2105.01601
     """
     model_args = dict(patch_size=16, num_blocks=12, embed_dim=768, **kwargs)
-    model = _create_mixer('mixer_b16_224', pretrained=pretrained, **model_args)
-    return model
+    return _create_mixer('mixer_b16_224', pretrained=pretrained, **model_args)
 
 
 @register_model
@@ -436,8 +433,9 @@ def mixer_b16_224_in21k(pretrained=False, **kwargs):
     Paper:  'MLP-Mixer: An all-MLP Architecture for Vision' - https://arxiv.org/abs/2105.01601
     """
     model_args = dict(patch_size=16, num_blocks=12, embed_dim=768, **kwargs)
-    model = _create_mixer('mixer_b16_224_in21k', pretrained=pretrained, **model_args)
-    return model
+    return _create_mixer(
+        'mixer_b16_224_in21k', pretrained=pretrained, **model_args
+    )
 
 
 @register_model
@@ -446,8 +444,7 @@ def mixer_l32_224(pretrained=False, **kwargs):
     Paper:  'MLP-Mixer: An all-MLP Architecture for Vision' - https://arxiv.org/abs/2105.01601
     """
     model_args = dict(patch_size=32, num_blocks=24, embed_dim=1024, **kwargs)
-    model = _create_mixer('mixer_l32_224', pretrained=pretrained, **model_args)
-    return model
+    return _create_mixer('mixer_l32_224', pretrained=pretrained, **model_args)
 
 
 @register_model
@@ -456,8 +453,7 @@ def mixer_l16_224(pretrained=False, **kwargs):
     Paper:  'MLP-Mixer: An all-MLP Architecture for Vision' - https://arxiv.org/abs/2105.01601
     """
     model_args = dict(patch_size=16, num_blocks=24, embed_dim=1024, **kwargs)
-    model = _create_mixer('mixer_l16_224', pretrained=pretrained, **model_args)
-    return model
+    return _create_mixer('mixer_l16_224', pretrained=pretrained, **model_args)
 
 
 @register_model
@@ -466,8 +462,9 @@ def mixer_l16_224_in21k(pretrained=False, **kwargs):
     Paper:  'MLP-Mixer: An all-MLP Architecture for Vision' - https://arxiv.org/abs/2105.01601
     """
     model_args = dict(patch_size=16, num_blocks=24, embed_dim=1024, **kwargs)
-    model = _create_mixer('mixer_l16_224_in21k', pretrained=pretrained, **model_args)
-    return model
+    return _create_mixer(
+        'mixer_l16_224_in21k', pretrained=pretrained, **model_args
+    )
 
 
 @register_model
@@ -476,8 +473,7 @@ def mixer_b16_224_miil(pretrained=False, **kwargs):
     Weights taken from: https://github.com/Alibaba-MIIL/ImageNet21K
     """
     model_args = dict(patch_size=16, num_blocks=12, embed_dim=768, **kwargs)
-    model = _create_mixer('mixer_b16_224_miil', pretrained=pretrained, **model_args)
-    return model
+    return _create_mixer('mixer_b16_224_miil', pretrained=pretrained, **model_args)
 
 
 @register_model
@@ -486,8 +482,9 @@ def mixer_b16_224_miil_in21k(pretrained=False, **kwargs):
     Weights taken from: https://github.com/Alibaba-MIIL/ImageNet21K
     """
     model_args = dict(patch_size=16, num_blocks=12, embed_dim=768, **kwargs)
-    model = _create_mixer('mixer_b16_224_miil_in21k', pretrained=pretrained, **model_args)
-    return model
+    return _create_mixer(
+        'mixer_b16_224_miil_in21k', pretrained=pretrained, **model_args
+    )
 
 
 @register_model
@@ -498,8 +495,7 @@ def gmixer_12_224(pretrained=False, **kwargs):
     model_args = dict(
         patch_size=16, num_blocks=12, embed_dim=384, mlp_ratio=(1.0, 4.0),
         mlp_layer=GluMlp, act_layer=nn.SiLU, **kwargs)
-    model = _create_mixer('gmixer_12_224', pretrained=pretrained, **model_args)
-    return model
+    return _create_mixer('gmixer_12_224', pretrained=pretrained, **model_args)
 
 
 @register_model
@@ -510,8 +506,7 @@ def gmixer_24_224(pretrained=False, **kwargs):
     model_args = dict(
         patch_size=16, num_blocks=24, embed_dim=384, mlp_ratio=(1.0, 4.0),
         mlp_layer=GluMlp, act_layer=nn.SiLU, **kwargs)
-    model = _create_mixer('gmixer_24_224', pretrained=pretrained, **model_args)
-    return model
+    return _create_mixer('gmixer_24_224', pretrained=pretrained, **model_args)
 
 
 @register_model
@@ -521,8 +516,7 @@ def resmlp_12_224(pretrained=False, **kwargs):
     """
     model_args = dict(
         patch_size=16, num_blocks=12, embed_dim=384, mlp_ratio=4, block_layer=ResBlock, norm_layer=Affine, **kwargs)
-    model = _create_mixer('resmlp_12_224', pretrained=pretrained, **model_args)
-    return model
+    return _create_mixer('resmlp_12_224', pretrained=pretrained, **model_args)
 
 
 @register_model
@@ -533,8 +527,7 @@ def resmlp_24_224(pretrained=False, **kwargs):
     model_args = dict(
         patch_size=16, num_blocks=24, embed_dim=384, mlp_ratio=4,
         block_layer=partial(ResBlock, init_values=1e-5), norm_layer=Affine, **kwargs)
-    model = _create_mixer('resmlp_24_224', pretrained=pretrained, **model_args)
-    return model
+    return _create_mixer('resmlp_24_224', pretrained=pretrained, **model_args)
 
 
 @register_model
@@ -545,8 +538,7 @@ def resmlp_36_224(pretrained=False, **kwargs):
     model_args = dict(
         patch_size=16, num_blocks=36, embed_dim=384, mlp_ratio=4,
         block_layer=partial(ResBlock, init_values=1e-6), norm_layer=Affine, **kwargs)
-    model = _create_mixer('resmlp_36_224', pretrained=pretrained, **model_args)
-    return model
+    return _create_mixer('resmlp_36_224', pretrained=pretrained, **model_args)
 
 
 @register_model
@@ -557,8 +549,7 @@ def resmlp_big_24_224(pretrained=False, **kwargs):
     model_args = dict(
         patch_size=8, num_blocks=24, embed_dim=768, mlp_ratio=4,
         block_layer=partial(ResBlock, init_values=1e-6), norm_layer=Affine, **kwargs)
-    model = _create_mixer('resmlp_big_24_224', pretrained=pretrained, **model_args)
-    return model
+    return _create_mixer('resmlp_big_24_224', pretrained=pretrained, **model_args)
 
 
 @register_model
@@ -568,8 +559,9 @@ def resmlp_12_distilled_224(pretrained=False, **kwargs):
     """
     model_args = dict(
         patch_size=16, num_blocks=12, embed_dim=384, mlp_ratio=4, block_layer=ResBlock, norm_layer=Affine, **kwargs)
-    model = _create_mixer('resmlp_12_distilled_224', pretrained=pretrained, **model_args)
-    return model
+    return _create_mixer(
+        'resmlp_12_distilled_224', pretrained=pretrained, **model_args
+    )
 
 
 @register_model
@@ -580,8 +572,9 @@ def resmlp_24_distilled_224(pretrained=False, **kwargs):
     model_args = dict(
         patch_size=16, num_blocks=24, embed_dim=384, mlp_ratio=4,
         block_layer=partial(ResBlock, init_values=1e-5), norm_layer=Affine, **kwargs)
-    model = _create_mixer('resmlp_24_distilled_224', pretrained=pretrained, **model_args)
-    return model
+    return _create_mixer(
+        'resmlp_24_distilled_224', pretrained=pretrained, **model_args
+    )
 
 
 @register_model
@@ -592,8 +585,9 @@ def resmlp_36_distilled_224(pretrained=False, **kwargs):
     model_args = dict(
         patch_size=16, num_blocks=36, embed_dim=384, mlp_ratio=4,
         block_layer=partial(ResBlock, init_values=1e-6), norm_layer=Affine, **kwargs)
-    model = _create_mixer('resmlp_36_distilled_224', pretrained=pretrained, **model_args)
-    return model
+    return _create_mixer(
+        'resmlp_36_distilled_224', pretrained=pretrained, **model_args
+    )
 
 
 @register_model
@@ -604,8 +598,9 @@ def resmlp_big_24_distilled_224(pretrained=False, **kwargs):
     model_args = dict(
         patch_size=8, num_blocks=24, embed_dim=768, mlp_ratio=4,
         block_layer=partial(ResBlock, init_values=1e-6), norm_layer=Affine, **kwargs)
-    model = _create_mixer('resmlp_big_24_distilled_224', pretrained=pretrained, **model_args)
-    return model
+    return _create_mixer(
+        'resmlp_big_24_distilled_224', pretrained=pretrained, **model_args
+    )
 
 
 @register_model
@@ -616,8 +611,9 @@ def resmlp_big_24_224_in22ft1k(pretrained=False, **kwargs):
     model_args = dict(
         patch_size=8, num_blocks=24, embed_dim=768, mlp_ratio=4,
         block_layer=partial(ResBlock, init_values=1e-6), norm_layer=Affine, **kwargs)
-    model = _create_mixer('resmlp_big_24_224_in22ft1k', pretrained=pretrained, **model_args)
-    return model
+    return _create_mixer(
+        'resmlp_big_24_224_in22ft1k', pretrained=pretrained, **model_args
+    )
 
 
 @register_model
@@ -629,8 +625,7 @@ def resmlp_12_224_dino(pretrained=False, **kwargs):
     """
     model_args = dict(
         patch_size=16, num_blocks=12, embed_dim=384, mlp_ratio=4, block_layer=ResBlock, norm_layer=Affine, **kwargs)
-    model = _create_mixer('resmlp_12_224_dino', pretrained=pretrained, **model_args)
-    return model
+    return _create_mixer('resmlp_12_224_dino', pretrained=pretrained, **model_args)
 
 
 @register_model
@@ -643,8 +638,7 @@ def resmlp_24_224_dino(pretrained=False, **kwargs):
     model_args = dict(
         patch_size=16, num_blocks=24, embed_dim=384, mlp_ratio=4,
         block_layer=partial(ResBlock, init_values=1e-5), norm_layer=Affine, **kwargs)
-    model = _create_mixer('resmlp_24_224_dino', pretrained=pretrained, **model_args)
-    return model
+    return _create_mixer('resmlp_24_224_dino', pretrained=pretrained, **model_args)
 
 
 @register_model
@@ -655,8 +649,7 @@ def gmlp_ti16_224(pretrained=False, **kwargs):
     model_args = dict(
         patch_size=16, num_blocks=30, embed_dim=128, mlp_ratio=6, block_layer=SpatialGatingBlock,
         mlp_layer=GatedMlp, **kwargs)
-    model = _create_mixer('gmlp_ti16_224', pretrained=pretrained, **model_args)
-    return model
+    return _create_mixer('gmlp_ti16_224', pretrained=pretrained, **model_args)
 
 
 @register_model
@@ -667,8 +660,7 @@ def gmlp_s16_224(pretrained=False, **kwargs):
     model_args = dict(
         patch_size=16, num_blocks=30, embed_dim=256, mlp_ratio=6, block_layer=SpatialGatingBlock,
         mlp_layer=GatedMlp, **kwargs)
-    model = _create_mixer('gmlp_s16_224', pretrained=pretrained, **model_args)
-    return model
+    return _create_mixer('gmlp_s16_224', pretrained=pretrained, **model_args)
 
 
 @register_model
@@ -679,5 +671,4 @@ def gmlp_b16_224(pretrained=False, **kwargs):
     model_args = dict(
         patch_size=16, num_blocks=30, embed_dim=512, mlp_ratio=6, block_layer=SpatialGatingBlock,
         mlp_layer=GatedMlp, **kwargs)
-    model = _create_mixer('gmlp_b16_224', pretrained=pretrained, **model_args)
-    return model
+    return _create_mixer('gmlp_b16_224', pretrained=pretrained, **model_args)

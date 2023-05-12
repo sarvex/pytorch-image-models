@@ -202,8 +202,11 @@ def window_partition(x: Tensor, window_size: Tuple[int, int]):
     """
     B, H, W, C = x.shape
     x = x.view(B, H // window_size[0], window_size[0], W // window_size[1], window_size[1], C)
-    windows = x.permute(0, 1, 3, 2, 4, 5).contiguous().view(-1, window_size[0], window_size[1], C)
-    return windows
+    return (
+        x.permute(0, 1, 3, 2, 4, 5)
+        .contiguous()
+        .view(-1, window_size[0], window_size[1], C)
+    )
 
 
 @register_notrace_function  # reason: int argument is a Proxy
@@ -397,8 +400,19 @@ class DaViTStage(nn.Module):
         stage_blocks = []
         for block_idx in range(depth):
             dual_attention_block = []
-            for attn_idx, attn_type in enumerate(attn_types):
-                if attn_type == 'spatial':
+            for attn_type in attn_types:
+                if attn_type == 'channel':
+                    dual_attention_block.append(ChannelBlock(
+                        dim=out_chs,
+                        num_heads=num_heads,
+                        mlp_ratio=mlp_ratio,
+                        qkv_bias=qkv_bias,
+                        drop_path=drop_path_rates[block_idx],
+                        norm_layer=norm_layer_cl,
+                        ffn=ffn,
+                        cpe_act=cpe_act
+                    ))
+                elif attn_type == 'spatial':
                     dual_attention_block.append(SpatialBlock(
                         dim=out_chs,
                         num_heads=num_heads,
@@ -409,17 +423,6 @@ class DaViTStage(nn.Module):
                         ffn=ffn,
                         cpe_act=cpe_act,
                         window_size=window_size,
-                    ))
-                elif attn_type == 'channel':
-                    dual_attention_block.append(ChannelBlock(
-                        dim=out_chs,
-                        num_heads=num_heads,
-                        mlp_ratio=mlp_ratio,
-                        qkv_bias=qkv_bias,
-                        drop_path=drop_path_rates[block_idx],
-                        norm_layer=norm_layer_cl,
-                        ffn=ffn,
-                        cpe_act=cpe_act
                     ))
             stage_blocks.append(nn.Sequential(*dual_attention_block))
         self.blocks = nn.Sequential(*stage_blocks)
@@ -542,8 +545,8 @@ class DaViT(nn.Module):
     def _init_weights(self, m):
         if isinstance(m, nn.Linear):
             trunc_normal_(m.weight, std=.02)
-            if isinstance(m, nn.Linear) and m.bias is not None:
-                nn.init.constant_(m.bias, 0)
+        if isinstance(m, nn.Linear) and m.bias is not None:
+            nn.init.constant_(m.bias, 0)
 
     @torch.jit.ignore
     def set_grad_checkpointing(self, enable=True):
@@ -607,15 +610,14 @@ def _create_davit(variant, pretrained=False, **kwargs):
     default_out_indices = tuple(i for i, _ in enumerate(kwargs.get('depths', (1, 1, 3, 1))))
     out_indices = kwargs.pop('out_indices', default_out_indices)
 
-    model = build_model_with_cfg(
+    return build_model_with_cfg(
         DaViT,
         variant,
         pretrained,
         pretrained_filter_fn=checkpoint_filter_fn,
         feature_cfg=dict(flatten_sequential=True, out_indices=out_indices),
-        **kwargs)
-
-    return model
+        **kwargs
+    )
 
 
 def _cfg(url='', **kwargs):

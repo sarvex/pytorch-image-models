@@ -80,7 +80,7 @@ class Bottle2neck(nn.Module):
 
         convs = []
         bns = []
-        for i in range(self.num_scales):
+        for _ in range(self.num_scales):
             convs.append(nn.Conv2d(
                 width, width, kernel_size=3, stride=stride, padding=first_dilation,
                 dilation=first_dilation, groups=cardinality, bias=False))
@@ -115,16 +115,13 @@ class Bottle2neck(nn.Module):
         spo = []
         sp = spx[0]  # redundant, for torchscript
         for i, (conv, bn) in enumerate(zip(self.convs, self.bns)):
-            if i == 0 or self.is_first:
-                sp = spx[i]
-            else:
-                sp = sp + spx[i]
+            sp = spx[i] if i == 0 or self.is_first else sp + spx[i]
             sp = conv(sp)
             sp = bn(sp)
             sp = self.relu(sp)
             spo.append(sp)
-        if self.scale > 1:
-            if self.pool is not None:  # self.is_first == True, None check for torchscript
+        if self.scale > 1:  # self.is_first == True, None check for torchscript
+            if self.pool is not None:
                 spo.append(self.pool(spx[-1]))
             else:
                 spo.append(spx[-1])

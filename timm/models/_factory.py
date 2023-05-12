@@ -21,9 +21,8 @@ def parse_model_name(model_name):
     if parsed.scheme == 'hf-hub':
         # FIXME may use fragment as revision, currently `@` in URI path
         return parsed.scheme, parsed.path
-    else:
-        model_name = os.path.split(parsed.path)[-1]
-        return 'timm', model_name
+    model_name = os.path.split(parsed.path)[-1]
+    return 'timm', model_name
 
 
 def safe_model_name(model_name, remove_source=True):
@@ -86,7 +85,7 @@ def create_model(
             pretrained_cfg = pretrained_tag
 
     if not is_model(model_name):
-        raise RuntimeError('Unknown model (%s)' % model_name)
+        raise RuntimeError(f'Unknown model ({model_name})')
 
     create_fn = model_entrypoint(model_name)
     with set_layer_config(scriptable=scriptable, exportable=exportable, no_jit=no_jit):

@@ -85,12 +85,13 @@ default_cfgs = {
 
 
 model_cfgs = dict(
-
     botnet26t=ByoModelCfg(
         blocks=(
             ByoBlockCfg(type='bottle', d=2, c=256, s=1, gs=0, br=0.25),
             ByoBlockCfg(type='bottle', d=2, c=512, s=2, gs=0, br=0.25),
-            interleave_blocks(types=('bottle', 'self_attn'), d=2, c=1024, s=2, gs=0, br=0.25),
+            interleave_blocks(
+                types=('bottle', 'self_attn'), d=2, c=1024, s=2, gs=0, br=0.25
+            ),
             ByoBlockCfg(type='self_attn', d=2, c=2048, s=2, gs=0, br=0.25),
         ),
         stem_chs=64,
@@ -98,13 +99,29 @@ model_cfgs = dict(
         stem_pool='maxpool',
         fixed_input_size=True,
         self_attn_layer='bottleneck',
-        self_attn_kwargs=dict()
+        self_attn_kwargs={},
     ),
     sebotnet33ts=ByoModelCfg(
         blocks=(
             ByoBlockCfg(type='bottle', d=2, c=256, s=1, gs=0, br=0.25),
-            interleave_blocks(types=('bottle', 'self_attn'), every=[2], d=3, c=512, s=2, gs=0, br=0.25),
-            interleave_blocks(types=('bottle', 'self_attn'), every=[2], d=3, c=1024, s=2, gs=0, br=0.25),
+            interleave_blocks(
+                types=('bottle', 'self_attn'),
+                every=[2],
+                d=3,
+                c=512,
+                s=2,
+                gs=0,
+                br=0.25,
+            ),
+            interleave_blocks(
+                types=('bottle', 'self_attn'),
+                every=[2],
+                d=3,
+                c=1024,
+                s=2,
+                gs=0,
+                br=0.25,
+            ),
             ByoBlockCfg('self_attn', d=2, c=1536, s=2, gs=0, br=0.333),
         ),
         stem_chs=64,
@@ -114,14 +131,26 @@ model_cfgs = dict(
         num_features=1280,
         attn_layer='se',
         self_attn_layer='bottleneck',
-        self_attn_kwargs=dict()
+        self_attn_kwargs={},
     ),
     botnet50ts=ByoModelCfg(
         blocks=(
             ByoBlockCfg(type='bottle', d=3, c=256, s=1, gs=0, br=0.25),
-            interleave_blocks(types=('bottle', 'self_attn'), every=4, d=4, c=512, s=2, gs=0, br=0.25),
-            interleave_blocks(types=('bottle', 'self_attn'), d=6, c=1024, s=2, gs=0, br=0.25),
-            interleave_blocks(types=('bottle', 'self_attn'), d=3, c=2048, s=2, gs=0, br=0.25),
+            interleave_blocks(
+                types=('bottle', 'self_attn'),
+                every=4,
+                d=4,
+                c=512,
+                s=2,
+                gs=0,
+                br=0.25,
+            ),
+            interleave_blocks(
+                types=('bottle', 'self_attn'), d=6, c=1024, s=2, gs=0, br=0.25
+            ),
+            interleave_blocks(
+                types=('bottle', 'self_attn'), d=3, c=2048, s=2, gs=0, br=0.25
+            ),
         ),
         stem_chs=64,
         stem_type='tiered',
@@ -129,13 +158,15 @@ model_cfgs = dict(
         act_layer='silu',
         fixed_input_size=True,
         self_attn_layer='bottleneck',
-        self_attn_kwargs=dict()
+        self_attn_kwargs={},
     ),
     eca_botnext26ts=ByoModelCfg(
         blocks=(
             ByoBlockCfg(type='bottle', d=2, c=256, s=1, gs=16, br=0.25),
             ByoBlockCfg(type='bottle', d=2, c=512, s=2, gs=16, br=0.25),
-            interleave_blocks(types=('bottle', 'self_attn'), d=2, c=1024, s=2, gs=16, br=0.25),
+            interleave_blocks(
+                types=('bottle', 'self_attn'), d=2, c=1024, s=2, gs=16, br=0.25
+            ),
             ByoBlockCfg(type='self_attn', d=2, c=2048, s=2, gs=16, br=0.25),
         ),
         stem_chs=64,
@@ -145,9 +176,8 @@ model_cfgs = dict(
         act_layer='silu',
         attn_layer='eca',
         self_attn_layer='bottleneck',
-        self_attn_kwargs=dict(dim_head=16)
+        self_attn_kwargs=dict(dim_head=16),
     ),
-
     halonet_h1=ByoModelCfg(
         blocks=(
             ByoBlockCfg(type='self_attn', d=3, c=64, s=1, gs=0, br=1.0),
@@ -158,7 +188,6 @@ model_cfgs = dict(
         stem_chs=64,
         stem_type='7x7',
         stem_pool='maxpool',
-
         self_attn_layer='halo',
         self_attn_kwargs=dict(block_size=8, halo_size=3),
     ),
@@ -166,20 +195,38 @@ model_cfgs = dict(
         blocks=(
             ByoBlockCfg(type='bottle', d=2, c=256, s=1, gs=0, br=0.25),
             ByoBlockCfg(type='bottle', d=2, c=512, s=2, gs=0, br=0.25),
-            interleave_blocks(types=('bottle', 'self_attn'), d=2, c=1024, s=2, gs=0, br=0.25),
+            interleave_blocks(
+                types=('bottle', 'self_attn'), d=2, c=1024, s=2, gs=0, br=0.25
+            ),
             ByoBlockCfg(type='self_attn', d=2, c=2048, s=2, gs=0, br=0.25),
         ),
         stem_chs=64,
         stem_type='tiered',
         stem_pool='maxpool',
         self_attn_layer='halo',
-        self_attn_kwargs=dict(block_size=8, halo_size=2)
+        self_attn_kwargs=dict(block_size=8, halo_size=2),
     ),
     sehalonet33ts=ByoModelCfg(
         blocks=(
             ByoBlockCfg(type='bottle', d=2, c=256, s=1, gs=0, br=0.25),
-            interleave_blocks(types=('bottle', 'self_attn'), every=[2], d=3, c=512, s=2, gs=0, br=0.25),
-            interleave_blocks(types=('bottle', 'self_attn'), every=[2], d=3, c=1024, s=2, gs=0, br=0.25),
+            interleave_blocks(
+                types=('bottle', 'self_attn'),
+                every=[2],
+                d=3,
+                c=512,
+                s=2,
+                gs=0,
+                br=0.25,
+            ),
+            interleave_blocks(
+                types=('bottle', 'self_attn'),
+                every=[2],
+                d=3,
+                c=1024,
+                s=2,
+                gs=0,
+                br=0.25,
+            ),
             ByoBlockCfg('self_attn', d=2, c=1536, s=2, gs=0, br=0.333),
         ),
         stem_chs=64,
@@ -189,29 +236,43 @@ model_cfgs = dict(
         num_features=1280,
         attn_layer='se',
         self_attn_layer='halo',
-        self_attn_kwargs=dict(block_size=8, halo_size=3)
+        self_attn_kwargs=dict(block_size=8, halo_size=3),
     ),
     halonet50ts=ByoModelCfg(
         blocks=(
             ByoBlockCfg(type='bottle', d=3, c=256, s=1, gs=0, br=0.25),
             interleave_blocks(
-                types=('bottle', 'self_attn'), every=4, d=4, c=512, s=2, gs=0, br=0.25,
-                self_attn_layer='halo', self_attn_kwargs=dict(block_size=8, halo_size=3, num_heads=4)),
-            interleave_blocks(types=('bottle', 'self_attn'), d=6, c=1024, s=2, gs=0, br=0.25),
-            interleave_blocks(types=('bottle', 'self_attn'), d=3, c=2048, s=2, gs=0, br=0.25),
+                types=('bottle', 'self_attn'),
+                every=4,
+                d=4,
+                c=512,
+                s=2,
+                gs=0,
+                br=0.25,
+                self_attn_layer='halo',
+                self_attn_kwargs=dict(block_size=8, halo_size=3, num_heads=4),
+            ),
+            interleave_blocks(
+                types=('bottle', 'self_attn'), d=6, c=1024, s=2, gs=0, br=0.25
+            ),
+            interleave_blocks(
+                types=('bottle', 'self_attn'), d=3, c=2048, s=2, gs=0, br=0.25
+            ),
         ),
         stem_chs=64,
         stem_type='tiered',
         stem_pool='maxpool',
         act_layer='silu',
         self_attn_layer='halo',
-        self_attn_kwargs=dict(block_size=8, halo_size=3)
+        self_attn_kwargs=dict(block_size=8, halo_size=3),
     ),
     eca_halonext26ts=ByoModelCfg(
         blocks=(
             ByoBlockCfg(type='bottle', d=2, c=256, s=1, gs=16, br=0.25),
             ByoBlockCfg(type='bottle', d=2, c=512, s=2, gs=16, br=0.25),
-            interleave_blocks(types=('bottle', 'self_attn'), d=2, c=1024, s=2, gs=16, br=0.25),
+            interleave_blocks(
+                types=('bottle', 'self_attn'), d=2, c=1024, s=2, gs=16, br=0.25
+            ),
             ByoBlockCfg(type='self_attn', d=2, c=2048, s=2, gs=16, br=0.25),
         ),
         stem_chs=64,
@@ -220,56 +281,77 @@ model_cfgs = dict(
         act_layer='silu',
         attn_layer='eca',
         self_attn_layer='halo',
-        self_attn_kwargs=dict(block_size=8, halo_size=2, dim_head=16)
+        self_attn_kwargs=dict(block_size=8, halo_size=2, dim_head=16),
     ),
-
     lambda_resnet26t=ByoModelCfg(
         blocks=(
             ByoBlockCfg(type='bottle', d=2, c=256, s=1, gs=0, br=0.25),
             ByoBlockCfg(type='bottle', d=2, c=512, s=2, gs=0, br=0.25),
-            interleave_blocks(types=('bottle', 'self_attn'), d=2, c=1024, s=2, gs=0, br=0.25),
+            interleave_blocks(
+                types=('bottle', 'self_attn'), d=2, c=1024, s=2, gs=0, br=0.25
+            ),
             ByoBlockCfg(type='self_attn', d=2, c=2048, s=2, gs=0, br=0.25),
         ),
         stem_chs=64,
         stem_type='tiered',
         stem_pool='maxpool',
         self_attn_layer='lambda',
-        self_attn_kwargs=dict(r=9)
+        self_attn_kwargs=dict(r=9),
     ),
     lambda_resnet50ts=ByoModelCfg(
         blocks=(
             ByoBlockCfg(type='bottle', d=3, c=256, s=1, gs=0, br=0.25),
-            interleave_blocks(types=('bottle', 'self_attn'), every=4, d=4, c=512, s=2, gs=0, br=0.25),
-            interleave_blocks(types=('bottle', 'self_attn'), d=6, c=1024, s=2, gs=0, br=0.25),
-            interleave_blocks(types=('bottle', 'self_attn'), d=3, c=2048, s=2, gs=0, br=0.25),
+            interleave_blocks(
+                types=('bottle', 'self_attn'),
+                every=4,
+                d=4,
+                c=512,
+                s=2,
+                gs=0,
+                br=0.25,
+            ),
+            interleave_blocks(
+                types=('bottle', 'self_attn'), d=6, c=1024, s=2, gs=0, br=0.25
+            ),
+            interleave_blocks(
+                types=('bottle', 'self_attn'), d=3, c=2048, s=2, gs=0, br=0.25
+            ),
         ),
         stem_chs=64,
         stem_type='tiered',
         stem_pool='maxpool',
         act_layer='silu',
         self_attn_layer='lambda',
-        self_attn_kwargs=dict(r=9)
+        self_attn_kwargs=dict(r=9),
     ),
     lambda_resnet26rpt_256=ByoModelCfg(
         blocks=(
             ByoBlockCfg(type='bottle', d=2, c=256, s=1, gs=0, br=0.25),
             ByoBlockCfg(type='bottle', d=2, c=512, s=2, gs=0, br=0.25),
-            interleave_blocks(types=('bottle', 'self_attn'), d=2, c=1024, s=2, gs=0, br=0.25),
+            interleave_blocks(
+                types=('bottle', 'self_attn'), d=2, c=1024, s=2, gs=0, br=0.25
+            ),
             ByoBlockCfg(type='self_attn', d=2, c=2048, s=2, gs=0, br=0.25),
         ),
         stem_chs=64,
         stem_type='tiered',
         stem_pool='maxpool',
         self_attn_layer='lambda',
-        self_attn_kwargs=dict(r=None)
+        self_attn_kwargs=dict(r=None),
     ),
-
-    # experimental
     haloregnetz_b=ByoModelCfg(
         blocks=(
             ByoBlockCfg(type='bottle', d=2, c=48, s=2, gs=16, br=3),
             ByoBlockCfg(type='bottle', d=6, c=96, s=2, gs=16, br=3),
-            interleave_blocks(types=('bottle', 'self_attn'), every=3, d=12, c=192, s=2, gs=16, br=3),
+            interleave_blocks(
+                types=('bottle', 'self_attn'),
+                every=3,
+                d=12,
+                c=192,
+                s=2,
+                gs=16,
+                br=3,
+            ),
             ByoBlockCfg('self_attn', d=2, c=288, s=2, gs=16, br=3),
         ),
         stem_chs=32,
@@ -281,22 +363,41 @@ model_cfgs = dict(
         attn_kwargs=dict(rd_ratio=0.25),
         block_kwargs=dict(bottle_in=True, linear_out=True),
         self_attn_layer='halo',
-        self_attn_kwargs=dict(block_size=7, halo_size=2, qk_ratio=0.33)
+        self_attn_kwargs=dict(block_size=7, halo_size=2, qk_ratio=0.33),
     ),
-
-    # experimental
     lamhalobotnet50ts=ByoModelCfg(
         blocks=(
             ByoBlockCfg(type='bottle', d=3, c=256, s=1, gs=0, br=0.25),
             interleave_blocks(
-                types=('bottle', 'self_attn'), d=4, c=512, s=2, gs=0, br=0.25,
-                self_attn_layer='lambda', self_attn_kwargs=dict(r=13)),
+                types=('bottle', 'self_attn'),
+                d=4,
+                c=512,
+                s=2,
+                gs=0,
+                br=0.25,
+                self_attn_layer='lambda',
+                self_attn_kwargs=dict(r=13),
+            ),
             interleave_blocks(
-                types=('bottle', 'self_attn'), d=6, c=1024, s=2, gs=0, br=0.25,
-                self_attn_layer='halo', self_attn_kwargs=dict(halo_size=3)),
+                types=('bottle', 'self_attn'),
+                d=6,
+                c=1024,
+                s=2,
+                gs=0,
+                br=0.25,
+                self_attn_layer='halo',
+                self_attn_kwargs=dict(halo_size=3),
+            ),
             interleave_blocks(
-                types=('bottle', 'self_attn'), d=3, c=2048, s=2, gs=0, br=0.25,
-                self_attn_layer='bottleneck', self_attn_kwargs=dict()),
+                types=('bottle', 'self_attn'),
+                d=3,
+                c=2048,
+                s=2,
+                gs=0,
+                br=0.25,
+                self_attn_layer='bottleneck',
+                self_attn_kwargs={},
+            ),
         ),
         stem_chs=64,
         stem_type='tiered',
@@ -307,14 +408,35 @@ model_cfgs = dict(
         blocks=(
             ByoBlockCfg(type='bottle', d=3, c=256, s=1, gs=0, br=0.25),
             interleave_blocks(
-                types=('bottle', 'self_attn'), d=4, c=512, s=2, gs=0, br=0.25,
-                self_attn_layer='halo', self_attn_kwargs=dict(halo_size=3)),
+                types=('bottle', 'self_attn'),
+                d=4,
+                c=512,
+                s=2,
+                gs=0,
+                br=0.25,
+                self_attn_layer='halo',
+                self_attn_kwargs=dict(halo_size=3),
+            ),
             interleave_blocks(
-                types=('bottle', 'self_attn'), d=6, c=1024, s=2, gs=0, br=0.25,
-                self_attn_layer='halo', self_attn_kwargs=dict(halo_size=3)),
+                types=('bottle', 'self_attn'),
+                d=6,
+                c=1024,
+                s=2,
+                gs=0,
+                br=0.25,
+                self_attn_layer='halo',
+                self_attn_kwargs=dict(halo_size=3),
+            ),
             interleave_blocks(
-                types=('bottle', 'self_attn'), d=3, c=2048, s=2, gs=0, br=0.25,
-                self_attn_layer='bottleneck', self_attn_kwargs=dict()),
+                types=('bottle', 'self_attn'),
+                d=3,
+                c=2048,
+                s=2,
+                gs=0,
+                br=0.25,
+                self_attn_layer='bottleneck',
+                self_attn_kwargs={},
+            ),
         ),
         stem_chs=64,
         stem_type='tiered',

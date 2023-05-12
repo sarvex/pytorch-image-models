@@ -14,12 +14,11 @@ __all__ = [
 
 
 def num_groups(group_size, channels):
-    if not group_size:  # 0 or None
+    if not group_size:
         return 1  # normal conv with 1 group
-    else:
-        # NOTE group_size == 1 -> depthwise conv
-        assert channels % group_size == 0
-        return channels // group_size
+    # NOTE group_size == 1 -> depthwise conv
+    assert channels % group_size == 0
+    return channels // group_size
 
 
 class SqueezeExcite(nn.Module):

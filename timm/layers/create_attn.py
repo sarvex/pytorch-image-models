@@ -48,17 +48,11 @@ def get_attn(attn_type):
             elif attn_type == 'lcbam':
                 module_cls = LightCbamModule
 
-            # Attention / attention-like modules w/ significant params
-            # Typically replace some of the existing workhorse convs in a network architecture.
-            # All of these accept a stride argument and can spatially downsample the input.
             elif attn_type == 'sk':
                 module_cls = SelectiveKernel
             elif attn_type == 'splat':
                 module_cls = SplitAttn
 
-            # Self-attention / attention-like modules w/ significant compute and/or params
-            # Typically replace some of the existing workhorse convs in a network architecture.
-            # All of these accept a stride argument and can spatially downsample the input.
             elif attn_type == 'lambda':
                 return LambdaLayer
             elif attn_type == 'bottleneck':
@@ -70,9 +64,8 @@ def get_attn(attn_type):
             elif attn_type == 'bat':
                 module_cls = BatNonLocalAttn
 
-            # Woops!
             else:
-                assert False, "Invalid attn module (%s)" % attn_type
+                assert False, f"Invalid attn module ({attn_type})"
         elif isinstance(attn_type, bool):
             if attn_type:
                 module_cls = SEModule
@@ -83,7 +76,4 @@ def get_attn(attn_type):
 
 def create_attn(attn_type, channels, **kwargs):
     module_cls = get_attn(attn_type)
-    if module_cls is not None:
-        # NOTE: it's expected the first (positional) argument of all attention layers is the # input channels
-        return module_cls(channels, **kwargs)
-    return None
+    return module_cls(channels, **kwargs) if module_cls is not None else None

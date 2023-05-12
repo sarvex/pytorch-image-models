@@ -60,9 +60,7 @@ class CustomDatasetInfo(DatasetInfo):
         return self._label_descriptions
 
     def label_name_to_description(self, label: str, detailed: bool = False) -> str:
-        if self._label_descriptions:
-            return self._label_descriptions[label]
-        return label  # return label name itself if a descriptions is not present
+        return self._label_descriptions[label] if self._label_descriptions else label
 
     def index_to_label_name(self, index) -> str:
         assert 0 <= index < len(self._label_names)

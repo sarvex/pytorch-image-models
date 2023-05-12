@@ -220,10 +220,7 @@ class PoolingVisionTransformer(nn.Module):
         assert not enable, 'gradient checkpointing not supported'
 
     def get_classifier(self):
-        if self.head_dist is not None:
-            return self.head, self.head_dist
-        else:
-            return self.head
+        return (self.head, self.head_dist) if self.head_dist is not None else self.head
 
     def reset_classifier(self, num_classes, global_pool=None):
         self.num_classes = num_classes
@@ -283,11 +280,13 @@ def _create_pit(variant, pretrained=False, **kwargs):
     if kwargs.get('features_only', None):
         raise RuntimeError('features_only not implemented for Vision Transformer models.')
 
-    model = build_model_with_cfg(
-        PoolingVisionTransformer, variant, pretrained,
+    return build_model_with_cfg(
+        PoolingVisionTransformer,
+        variant,
+        pretrained,
         pretrained_filter_fn=checkpoint_filter_fn,
-        **kwargs)
-    return model
+        **kwargs
+    )
 
 
 @register_model

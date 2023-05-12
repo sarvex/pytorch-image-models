@@ -318,14 +318,14 @@ class Downsample2d(nn.Module):
             bias: bool = True,
     ):
         super().__init__()
-        assert pool_type in ('max', 'max2', 'avg', 'avg2')
-        if pool_type == 'max':
+        assert pool_type in {'max', 'max2', 'avg', 'avg2'}
+        if pool_type == 'avg':
+            self.pool = create_pool2d(
+                'avg', kernel_size=3, stride=2, count_include_pad=False, padding=padding or 1)
+        elif pool_type == 'max':
             self.pool = create_pool2d('max', kernel_size=3, stride=2, padding=padding or 1)
         elif pool_type == 'max2':
             self.pool = create_pool2d('max', 2, padding=padding or 0)  # kernel_size == stride == 2
-        elif pool_type == 'avg':
-            self.pool = create_pool2d(
-                'avg', kernel_size=3, stride=2, count_include_pad=False, padding=padding or 1)
         else:
             self.pool = create_pool2d('avg', 2, padding=padding or 0)
 
@@ -341,27 +341,28 @@ class Downsample2d(nn.Module):
 
 
 def _init_transformer(module, name, scheme=''):
-    if isinstance(module, (nn.Conv2d, nn.Linear)):
-        if scheme == 'normal':
-            nn.init.normal_(module.weight, std=.02)
-            if module.bias is not None:
+    if not isinstance(module, (nn.Conv2d, nn.Linear)):
+        return
+    if scheme == 'normal':
+        nn.init.normal_(module.weight, std=.02)
+        if module.bias is not None:
+            nn.init.zeros_(module.bias)
+    elif scheme == 'trunc_normal':
+        trunc_normal_tf_(module.weight, std=.02)
+        if module.bias is not None:
+            nn.init.zeros_(module.bias)
+    elif scheme == 'xavier_normal':
+        nn.init.xavier_normal_(module.weight)
+        if module.bias is not None:
+            nn.init.zeros_(module.bias)
+    else:
+        # vit like
+        nn.init.xavier_uniform_(module.weight)
+        if module.bias is not None:
+            if 'mlp' in name:
+                nn.init.normal_(module.bias, std=1e-6)
+            else:
                 nn.init.zeros_(module.bias)
-        elif scheme == 'trunc_normal':
-            trunc_normal_tf_(module.weight, std=.02)
-            if module.bias is not None:
-                nn.init.zeros_(module.bias)
-        elif scheme == 'xavier_normal':
-            nn.init.xavier_normal_(module.weight)
-            if module.bias is not None:
-                nn.init.zeros_(module.bias)
-        else:
-            # vit like
-            nn.init.xavier_uniform_(module.weight)
-            if module.bias is not None:
-                if 'mlp' in name:
-                    nn.init.normal_(module.bias, std=1e-6)
-                else:
-                    nn.init.zeros_(module.bias)
 
 
 class TransformerBlock2d(nn.Module):
@@ -433,32 +434,25 @@ def _init_conv(module, name, scheme=''):
     if isinstance(module, nn.Conv2d):
         if scheme == 'normal':
             nn.init.normal_(module.weight, std=.02)
-            if module.bias is not None:
-                nn.init.zeros_(module.bias)
         elif scheme == 'trunc_normal':
             trunc_normal_tf_(module.weight, std=.02)
-            if module.bias is not None:
-                nn.init.zeros_(module.bias)
         elif scheme == 'xavier_normal':
             nn.init.xavier_normal_(module.weight)
-            if module.bias is not None:
-                nn.init.zeros_(module.bias)
         else:
             # efficientnet like
             fan_out = module.kernel_size[0] * module.kernel_size[1] * module.out_channels
             fan_out //= module.groups
             nn.init.normal_(module.weight, 0, math.sqrt(2.0 / fan_out))
-            if module.bias is not None:
-                nn.init.zeros_(module.bias)
+        if module.bias is not None:
+            nn.init.zeros_(module.bias)
 
 
 def num_groups(group_size, channels):
-    if not group_size:  # 0 or None
+    if not group_size:
         return 1  # normal conv with 1 group
-    else:
-        # NOTE group_size == 1 -> depthwise conv
-        assert channels % group_size == 0
-        return channels // group_size
+    # NOTE group_size == 1 -> depthwise conv
+    assert channels % group_size == 0
+    return channels // group_size
 
 
 class MbConvBlock(nn.Module):
@@ -486,13 +480,12 @@ class MbConvBlock(nn.Module):
 
         assert cfg.stride_mode in ('pool', '1x1', 'dw')
         stride_pool, stride_1, stride_2 = 1, 1, 1
-        if cfg.stride_mode == 'pool':
-            # NOTE this is not described in paper, experiment to find faster option that doesn't stride in 1x1
-            stride_pool, dilation_2 = stride, dilation[1]
-            # FIXME handle dilation of avg pool
-        elif cfg.stride_mode == '1x1':
+        if cfg.stride_mode == '1x1':
             # NOTE I don't like this option described in paper, 1x1 w/ stride throws info away
             stride_1, dilation_2 = stride, dilation[1]
+        elif cfg.stride_mode == 'pool':
+            # NOTE this is not described in paper, experiment to find faster option that doesn't stride in 1x1
+            stride_pool, dilation_2 = stride, dilation[1]
         else:
             stride_2, dilation_2 = stride, dilation[0]
 
@@ -509,10 +502,9 @@ class MbConvBlock(nn.Module):
             stride=stride_2, dilation=dilation_2, groups=groups, padding=cfg.padding)
 
         attn_kwargs = {}
-        if isinstance(cfg.attn_layer, str):
-            if cfg.attn_layer == 'se' or cfg.attn_layer == 'eca':
-                attn_kwargs['act_layer'] = cfg.attn_act_layer
-                attn_kwargs['rd_channels'] = int(cfg.attn_ratio * (out_chs if cfg.expand_output else mid_chs))
+        if isinstance(cfg.attn_layer, str) and cfg.attn_layer in ['se', 'eca']:
+            attn_kwargs['act_layer'] = cfg.attn_act_layer
+            attn_kwargs['rd_channels'] = int(cfg.attn_ratio * (out_chs if cfg.expand_output else mid_chs))
 
         # two different orderings for SE and norm2 (due to some weights and trials using SE before norm2)
         if cfg.attn_early:
@@ -635,8 +627,11 @@ def window_partition(x, window_size: List[int]):
     _assert(H % window_size[0] == 0, f'height ({H}) must be divisible by window ({window_size[0]})')
     _assert(W % window_size[1] == 0, '')
     x = x.view(B, H // window_size[0], window_size[0], W // window_size[1], window_size[1], C)
-    windows = x.permute(0, 1, 3, 2, 4, 5).contiguous().view(-1, window_size[0], window_size[1], C)
-    return windows
+    return (
+        x.permute(0, 1, 3, 2, 4, 5)
+        .contiguous()
+        .view(-1, window_size[0], window_size[1], C)
+    )
 
 
 @register_notrace_function  # reason: int argument is a Proxy
@@ -653,8 +648,11 @@ def grid_partition(x, grid_size: List[int]):
     _assert(H % grid_size[0] == 0, f'height {H} must be divisible by grid {grid_size[0]}')
     _assert(W % grid_size[1] == 0, '')
     x = x.view(B, grid_size[0], H // grid_size[0], grid_size[1], W // grid_size[1], C)
-    windows = x.permute(0, 2, 4, 1, 3, 5).contiguous().view(-1, grid_size[0], grid_size[1], C)
-    return windows
+    return (
+        x.permute(0, 2, 4, 1, 3, 5)
+        .contiguous()
+        .view(-1, grid_size[0], grid_size[1], C)
+    )
 
 
 @register_notrace_function  # reason: int argument is a Proxy
@@ -819,8 +817,11 @@ def window_partition_nchw(x, window_size: List[int]):
     _assert(H % window_size[0] == 0, f'height ({H}) must be divisible by window ({window_size[0]})')
     _assert(W % window_size[1] == 0, '')
     x = x.view(B, C, H // window_size[0], window_size[0], W // window_size[1], window_size[1])
-    windows = x.permute(0, 2, 4, 1, 3, 5).contiguous().view(-1, C, window_size[0], window_size[1])
-    return windows
+    return (
+        x.permute(0, 2, 4, 1, 3, 5)
+        .contiguous()
+        .view(-1, C, window_size[0], window_size[1])
+    )
 
 
 @register_notrace_function  # reason: int argument is a Proxy
@@ -837,8 +838,11 @@ def grid_partition_nchw(x, grid_size: List[int]):
     _assert(H % grid_size[0] == 0, f'height {H} must be divisible by grid {grid_size[0]}')
     _assert(W % grid_size[1] == 0, '')
     x = x.view(B, C, grid_size[0], H // grid_size[0], grid_size[1], W // grid_size[1])
-    windows = x.permute(0, 3, 5, 1, 2, 4).contiguous().view(-1, C, grid_size[0], grid_size[1])
-    return windows
+    return (
+        x.permute(0, 3, 5, 1, 2, 4)
+        .contiguous()
+        .view(-1, C, grid_size[0], grid_size[1])
+    )
 
 
 @register_notrace_function  # reason: int argument is a Proxy
@@ -1027,16 +1031,6 @@ class MaxxVitStage(nn.Module):
                     cfg=conv_cfg,
                     drop_path=drop_path[i],
                 )]
-            elif t == 'T':
-                rel_pos_cls = get_rel_pos_cls(transformer_cfg, feat_size)
-                blocks += [TransformerBlock2d(
-                    in_chs,
-                    out_chs,
-                    stride=block_stride,
-                    rel_pos_cls=rel_pos_cls,
-                    cfg=transformer_cfg,
-                    drop_path=drop_path[i],
-                )]
             elif t == 'M':
                 blocks += [MaxxVitBlock(
                     in_chs,
@@ -1053,6 +1047,16 @@ class MaxxVitStage(nn.Module):
                     stride=block_stride,
                     conv_cfg=conv_cfg,
                     transformer_cfg=transformer_cfg,
+                    drop_path=drop_path[i],
+                )]
+            elif t == 'T':
+                rel_pos_cls = get_rel_pos_cls(transformer_cfg, feat_size)
+                blocks += [TransformerBlock2d(
+                    in_chs,
+                    out_chs,
+                    stride=block_stride,
+                    rel_pos_cls=rel_pos_cls,
+                    cfg=transformer_cfg,
                     drop_path=drop_path[i],
                 )]
             in_chs = out_chs
@@ -1170,17 +1174,17 @@ class MaxxVit(nn.Module):
         )
         stride = self.stem.stride
         self.feature_info += [dict(num_chs=self.stem.out_chs, reduction=2, module='stem')]
-        feat_size = tuple([i // s for i, s in zip(img_size, to_2tuple(stride))])
+        feat_size = tuple(i // s for i, s in zip(img_size, to_2tuple(stride)))
 
         num_stages = len(cfg.embed_dim)
         assert len(cfg.depths) == num_stages
         dpr = [x.tolist() for x in torch.linspace(0, drop_path_rate, sum(cfg.depths)).split(cfg.depths)]
         in_chs = self.stem.out_chs
         stages = []
+        stage_stride = 2
         for i in range(num_stages):
-            stage_stride = 2
             out_chs = cfg.embed_dim[i]
-            feat_size = tuple([(r - 1) // stage_stride + 1 for r in feat_size])
+            feat_size = tuple((r - 1) // stage_stride + 1 for r in feat_size)
             stages += [MaxxVitStage(
                 in_chs,
                 out_chs,
@@ -1233,11 +1237,10 @@ class MaxxVit(nn.Module):
 
     @torch.jit.ignore
     def group_matcher(self, coarse=False):
-        matcher = dict(
+        return dict(
             stem=r'^stem',  # stem and embed
-            blocks=[(r'^stages\.(\d+)', None), (r'^norm', (99999,))]
+            blocks=[(r'^stages\.(\d+)', None), (r'^norm', (99999,))],
         )
-        return matcher
 
     @torch.jit.ignore
     def set_grad_checkpointing(self, enable=True):

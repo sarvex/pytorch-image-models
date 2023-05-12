@@ -38,8 +38,8 @@ SHUFFLE_SIZE = int(os.environ.get('WDS_SHUFFLE_SIZE', 8192))
 
 
 def _load_info(root, basename='info'):
-    info_json = os.path.join(root, basename + '.json')
-    info_yaml = os.path.join(root, basename + '.yaml')
+    info_json = os.path.join(root, f'{basename}.json')
+    info_yaml = os.path.join(root, f'{basename}.yaml')
     err_str = ''
     try:
         with wds.gopen.gopen(info_json) as f:
@@ -97,7 +97,7 @@ def _parse_split_info(split: str, info: Dict):
         if split_name:
             split_info = info['splits'][split_name]
             if not num_samples:
-                _fc = {f: c for f, c in zip(split_info['filenames'], split_info['shard_lengths'])}
+                _fc = dict(zip(split_info['filenames'], split_info['shard_lengths']))
                 num_samples = sum(_fc[f] for f in split_filenames)
                 split_info['filenames'] = tuple(_fc.keys())
                 split_info['shard_lengths'] = tuple(_fc.values())
@@ -155,9 +155,7 @@ def _decode(
     if image_format:
         img = img.convert(image_format)
 
-    # json passed through in undecoded state
-    decoded = dict(jpg=img, cls=class_label, json=sample.get('json', None))
-    return decoded
+    return dict(jpg=img, cls=class_label, json=sample.get('json', None))
 
 
 def _decode_samples(
@@ -224,10 +222,7 @@ if wds is not None:
                 self.epoch += 1
                 epoch = self.epoch
 
-            if self.seed < 0:
-                seed = pytorch_worker_seed() + epoch
-            else:
-                seed = self.seed + epoch
+            seed = pytorch_worker_seed() + epoch if self.seed < 0 else self.seed + epoch
             # _logger.info(f'shuffle seed: {self.seed}, {seed}, epoch: {epoch}')  # FIXME temporary
             rng = random.Random(seed)
             return _shuffle(src, self.bufsize, self.initial, rng)
@@ -319,7 +314,7 @@ class ReaderWds(Reader):
         self.split_info = _parse_split_info(split, self.info)
         self.num_samples = self.split_info.num_samples
         if not self.num_samples:
-            raise RuntimeError(f'Invalid split definition, no samples found.')
+            raise RuntimeError('Invalid split definition, no samples found.')
 
         # Distributed world state
         self.dist_rank = 0
@@ -400,11 +395,9 @@ class ReaderWds(Reader):
 
     def _split_by_node_and_worker(self, src):
         if self.global_num_workers > 1:
-            for s in islice(src, self.global_worker_id, None, self.global_num_workers):
-                yield s
+            yield from islice(src, self.global_worker_id, None, self.global_num_workers)
         else:
-            for s in src:
-                yield s
+            yield from src
 
     def _num_samples_per_worker(self):
         num_worker_samples = self.num_samples / max(self.global_num_workers, self.dist_num_replicas)
@@ -428,16 +421,13 @@ class ReaderWds(Reader):
         else:
             ds = self.ds
 
-        i = 0
         # _logger.info(f'start {i}, {self.worker_id}')  # FIXME temporary debug
         for sample in ds:
             yield sample[self.image_key], sample[self.target_key]
-            i += 1
         # _logger.info(f'end {i}, {self.worker_id}')  # FIXME temporary debug
 
     def __len__(self):
-        num_samples = self._num_samples_per_worker() * self.num_workers
-        return num_samples
+        return self._num_samples_per_worker() * self.num_workers
 
     def _filename(self, index, basename=False, absolute=False):
         assert False, "Not supported"  # no random access to examples

@@ -131,14 +131,13 @@ class Attention(nn.Module):
             x_ = self.norm(x_)
             x_ = self.act(x_)
             kv = self.kv(x_).reshape(B, -1, 2, self.num_heads, self.head_dim).permute(2, 0, 3, 1, 4)
+        elif self.sr is None:
+            kv = self.kv(x).reshape(B, -1, 2, self.num_heads, self.head_dim).permute(2, 0, 3, 1, 4)
         else:
-            if self.sr is not None:
-                x_ = x.permute(0, 2, 1).reshape(B, C, H, W)
-                x_ = self.sr(x_).reshape(B, C, -1).permute(0, 2, 1)
-                x_ = self.norm(x_)
-                kv = self.kv(x_).reshape(B, -1, 2, self.num_heads, self.head_dim).permute(2, 0, 3, 1, 4)
-            else:
-                kv = self.kv(x).reshape(B, -1, 2, self.num_heads, self.head_dim).permute(2, 0, 3, 1, 4)
+            x_ = x.permute(0, 2, 1).reshape(B, C, H, W)
+            x_ = self.sr(x_).reshape(B, C, -1).permute(0, 2, 1)
+            x_ = self.norm(x_)
+            kv = self.kv(x_).reshape(B, -1, 2, self.num_heads, self.head_dim).permute(2, 0, 3, 1, 4)
         k, v = kv.unbind(0)
 
         attn = (q @ k.transpose(-2, -1)) * self.scale
@@ -349,11 +348,9 @@ class PyramidVisionTransformerV2(nn.Module):
 
     @torch.jit.ignore
     def group_matcher(self, coarse=False):
-        matcher = dict(
-            stem=r'^patch_embed',  # stem and embed
-            blocks=r'^stages\.(\d+)'
+        return dict(
+            stem=r'^patch_embed', blocks=r'^stages\.(\d+)'  # stem and embed
         )
-        return matcher
 
     @torch.jit.ignore
     def set_grad_checkpointing(self, enable=True):
@@ -410,12 +407,13 @@ def _checkpoint_filter_fn(state_dict, model):
 def _create_pvt2(variant, pretrained=False, **kwargs):
     if kwargs.get('features_only', None):
         raise RuntimeError('features_only not implemented for Vision Transformer models.')
-    model = build_model_with_cfg(
-        PyramidVisionTransformerV2, variant, pretrained,
+    return build_model_with_cfg(
+        PyramidVisionTransformerV2,
+        variant,
+        pretrained,
         pretrained_filter_fn=_checkpoint_filter_fn,
         **kwargs
     )
-    return model
 
 
 @register_model

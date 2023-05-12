@@ -207,7 +207,7 @@ def validate(args):
     if args.checkpoint:
         load_checkpoint(model, args.checkpoint, args.use_ema)
 
-    param_count = sum([m.numel() for m in model.parameters()])
+    param_count = sum(m.numel() for m in model.parameters())
     _logger.info('Model %s created, param count: %d' % (args.model, param_count))
 
     data_config = resolve_data_config(
@@ -225,7 +225,7 @@ def validate(args):
         model = model.to(memory_format=torch.channels_last)
 
     if args.torchscript:
-        assert not use_amp == 'apex', 'Cannot use APEX AMP with torchscripted model'
+        assert use_amp != 'apex', 'Cannot use APEX AMP with torchscripted model'
         model = torch.jit.script(model)
     elif args.torchcompile:
         assert has_compile, 'A version of torch w/ torch.compile() is required for --compile, possibly a nightly.'
@@ -393,8 +393,8 @@ def main():
     model_names = []
     if os.path.isdir(args.checkpoint):
         # validate all checkpoints in a path with same model
-        checkpoints = glob.glob(args.checkpoint + '/*.pth.tar')
-        checkpoints += glob.glob(args.checkpoint + '/*.pth')
+        checkpoints = glob.glob(f'{args.checkpoint}/*.pth.tar')
+        checkpoints += glob.glob(f'{args.checkpoint}/*.pth')
         model_names = list_models(args.model)
         model_cfgs = [(args.model, c) for c in sorted(checkpoints, key=natural_key)]
     else:
@@ -414,9 +414,11 @@ def main():
             model_cfgs = [(n, None) for n in model_names if n]
 
     if len(model_cfgs):
-        _logger.info('Running bulk validation on these pretrained models: {}'.format(', '.join(model_names)))
+        _logger.info(
+            f"Running bulk validation on these pretrained models: {', '.join(model_names)}"
+        )
         results = []
-        try:
+        with suppress(KeyboardInterrupt):
             initial_batch_size = args.batch_size
             for m, c in model_cfgs:
                 args.model = m
@@ -427,15 +429,9 @@ def main():
                 if args.checkpoint:
                     r['checkpoint'] = args.checkpoint
                 results.append(r)
-        except KeyboardInterrupt as e:
-            pass
         results = sorted(results, key=lambda x: x['top1'], reverse=True)
     else:
-        if args.retry:
-            results = _try_run(args, args.batch_size)
-        else:
-            results = validate(args)
-
+        results = _try_run(args, args.batch_size) if args.retry else validate(args)
     if args.results_file:
         write_results(args.results_file, results, format=args.results_format)
 

@@ -167,7 +167,7 @@ def _nfres_cfg(
         attn_kwargs=None,
 ):
     attn_kwargs = attn_kwargs or {}
-    cfg = NfCfg(
+    return NfCfg(
         depths=depths,
         channels=channels,
         stem_type='7x7_pool',
@@ -178,13 +178,12 @@ def _nfres_cfg(
         attn_layer=attn_layer,
         attn_kwargs=attn_kwargs,
     )
-    return cfg
 
 
 def _nfreg_cfg(depths, channels=(48, 104, 208, 440)):
     num_features = 1280 * channels[-1] // 440
     attn_kwargs = dict(rd_ratio=0.5)
-    cfg = NfCfg(
+    return NfCfg(
         depths=depths,
         channels=channels,
         stem_type='3x3',
@@ -196,7 +195,6 @@ def _nfreg_cfg(depths, channels=(48, 104, 208, 440)):
         attn_layer='se',
         attn_kwargs=attn_kwargs,
     )
-    return cfg
 
 
 def _nfnet_cfg(
@@ -211,7 +209,7 @@ def _nfnet_cfg(
 ):
     num_features = int(channels[-1] * feat_mult)
     attn_kwargs = attn_kwargs if attn_kwargs is not None else dict(rd_ratio=0.5)
-    cfg = NfCfg(
+    return NfCfg(
         depths=depths,
         channels=channels,
         stem_type='deep_quad',
@@ -224,7 +222,6 @@ def _nfnet_cfg(
         attn_layer=attn_layer,
         attn_kwargs=attn_kwargs,
     )
-    return cfg
 
 
 def _dm_nfnet_cfg(
@@ -233,7 +230,7 @@ def _dm_nfnet_cfg(
         act_layer='gelu',
         skipinit=True,
 ):
-    cfg = NfCfg(
+    return NfCfg(
         depths=depths,
         channels=channels,
         stem_type='deep_quad',
@@ -249,11 +246,9 @@ def _dm_nfnet_cfg(
         attn_layer='se',
         attn_kwargs=dict(rd_ratio=0.5),
     )
-    return cfg
 
 
 model_cfgs = dict(
-    # NFNet-F models w/ GELU compatible with DeepMind weights
     dm_nfnet_f0=_dm_nfnet_cfg(depths=(1, 2, 6, 3)),
     dm_nfnet_f1=_dm_nfnet_cfg(depths=(2, 4, 12, 6)),
     dm_nfnet_f2=_dm_nfnet_cfg(depths=(3, 6, 18, 9)),
@@ -261,8 +256,6 @@ model_cfgs = dict(
     dm_nfnet_f4=_dm_nfnet_cfg(depths=(5, 10, 30, 15)),
     dm_nfnet_f5=_dm_nfnet_cfg(depths=(6, 12, 36, 18)),
     dm_nfnet_f6=_dm_nfnet_cfg(depths=(7, 14, 42, 21)),
-
-    # NFNet-F models w/ GELU
     nfnet_f0=_nfnet_cfg(depths=(1, 2, 6, 3)),
     nfnet_f1=_nfnet_cfg(depths=(2, 4, 12, 6)),
     nfnet_f2=_nfnet_cfg(depths=(3, 6, 18, 9)),
@@ -271,47 +264,83 @@ model_cfgs = dict(
     nfnet_f5=_nfnet_cfg(depths=(6, 12, 36, 18)),
     nfnet_f6=_nfnet_cfg(depths=(7, 14, 42, 21)),
     nfnet_f7=_nfnet_cfg(depths=(8, 16, 48, 24)),
-
-    # Experimental 'light' versions of NFNet-F that are little leaner
     nfnet_l0=_nfnet_cfg(
-        depths=(1, 2, 6, 3), feat_mult=1.5, group_size=64, bottle_ratio=0.25,
-        attn_kwargs=dict(rd_ratio=0.25, rd_divisor=8), act_layer='silu'),
+        depths=(1, 2, 6, 3),
+        feat_mult=1.5,
+        group_size=64,
+        bottle_ratio=0.25,
+        attn_kwargs=dict(rd_ratio=0.25, rd_divisor=8),
+        act_layer='silu',
+    ),
     eca_nfnet_l0=_nfnet_cfg(
-        depths=(1, 2, 6, 3), feat_mult=1.5, group_size=64, bottle_ratio=0.25,
-        attn_layer='eca', attn_kwargs=dict(), act_layer='silu'),
+        depths=(1, 2, 6, 3),
+        feat_mult=1.5,
+        group_size=64,
+        bottle_ratio=0.25,
+        attn_layer='eca',
+        attn_kwargs={},
+        act_layer='silu',
+    ),
     eca_nfnet_l1=_nfnet_cfg(
-        depths=(2, 4, 12, 6), feat_mult=2, group_size=64, bottle_ratio=0.25,
-        attn_layer='eca', attn_kwargs=dict(), act_layer='silu'),
+        depths=(2, 4, 12, 6),
+        feat_mult=2,
+        group_size=64,
+        bottle_ratio=0.25,
+        attn_layer='eca',
+        attn_kwargs={},
+        act_layer='silu',
+    ),
     eca_nfnet_l2=_nfnet_cfg(
-        depths=(3, 6, 18, 9), feat_mult=2, group_size=64, bottle_ratio=0.25,
-        attn_layer='eca', attn_kwargs=dict(), act_layer='silu'),
+        depths=(3, 6, 18, 9),
+        feat_mult=2,
+        group_size=64,
+        bottle_ratio=0.25,
+        attn_layer='eca',
+        attn_kwargs={},
+        act_layer='silu',
+    ),
     eca_nfnet_l3=_nfnet_cfg(
-        depths=(4, 8, 24, 12), feat_mult=2, group_size=64, bottle_ratio=0.25,
-        attn_layer='eca', attn_kwargs=dict(), act_layer='silu'),
-
-    # EffNet influenced RegNet defs.
-    # NOTE: These aren't quite the official ver, ch_div=1 must be set for exact ch counts. I round to ch_div=8.
+        depths=(4, 8, 24, 12),
+        feat_mult=2,
+        group_size=64,
+        bottle_ratio=0.25,
+        attn_layer='eca',
+        attn_kwargs={},
+        act_layer='silu',
+    ),
     nf_regnet_b0=_nfreg_cfg(depths=(1, 3, 6, 6)),
     nf_regnet_b1=_nfreg_cfg(depths=(2, 4, 7, 7)),
     nf_regnet_b2=_nfreg_cfg(depths=(2, 4, 8, 8), channels=(56, 112, 232, 488)),
     nf_regnet_b3=_nfreg_cfg(depths=(2, 5, 9, 9), channels=(56, 128, 248, 528)),
-    nf_regnet_b4=_nfreg_cfg(depths=(2, 6, 11, 11), channels=(64, 144, 288, 616)),
-    nf_regnet_b5=_nfreg_cfg(depths=(3, 7, 14, 14), channels=(80, 168, 336, 704)),
-    # FIXME add B6-B8
-
-    # ResNet (preact, D style deep stem/avg down) defs
+    nf_regnet_b4=_nfreg_cfg(
+        depths=(2, 6, 11, 11), channels=(64, 144, 288, 616)
+    ),
+    nf_regnet_b5=_nfreg_cfg(
+        depths=(3, 7, 14, 14), channels=(80, 168, 336, 704)
+    ),
     nf_resnet26=_nfres_cfg(depths=(2, 2, 2, 2)),
     nf_resnet50=_nfres_cfg(depths=(3, 4, 6, 3)),
     nf_resnet101=_nfres_cfg(depths=(3, 4, 23, 3)),
-
-    nf_seresnet26=_nfres_cfg(depths=(2, 2, 2, 2), attn_layer='se', attn_kwargs=dict(rd_ratio=1/16)),
-    nf_seresnet50=_nfres_cfg(depths=(3, 4, 6, 3), attn_layer='se', attn_kwargs=dict(rd_ratio=1/16)),
-    nf_seresnet101=_nfres_cfg(depths=(3, 4, 23, 3), attn_layer='se', attn_kwargs=dict(rd_ratio=1/16)),
-
-    nf_ecaresnet26=_nfres_cfg(depths=(2, 2, 2, 2), attn_layer='eca', attn_kwargs=dict()),
-    nf_ecaresnet50=_nfres_cfg(depths=(3, 4, 6, 3), attn_layer='eca', attn_kwargs=dict()),
-    nf_ecaresnet101=_nfres_cfg(depths=(3, 4, 23, 3), attn_layer='eca', attn_kwargs=dict()),
-
+    nf_seresnet26=_nfres_cfg(
+        depths=(2, 2, 2, 2), attn_layer='se', attn_kwargs=dict(rd_ratio=1 / 16)
+    ),
+    nf_seresnet50=_nfres_cfg(
+        depths=(3, 4, 6, 3), attn_layer='se', attn_kwargs=dict(rd_ratio=1 / 16)
+    ),
+    nf_seresnet101=_nfres_cfg(
+        depths=(3, 4, 23, 3),
+        attn_layer='se',
+        attn_kwargs=dict(rd_ratio=1 / 16),
+    ),
+    nf_ecaresnet26=_nfres_cfg(
+        depths=(2, 2, 2, 2), attn_layer='eca', attn_kwargs={}
+    ),
+    nf_ecaresnet50=_nfres_cfg(
+        depths=(3, 4, 6, 3), attn_layer='eca', attn_kwargs={}
+    ),
+    nf_ecaresnet101=_nfres_cfg(
+        depths=(3, 4, 23, 3), attn_layer='eca', attn_kwargs={}
+    ),
 )
 
 
@@ -416,16 +445,10 @@ class NormFreeBlock(nn.Module):
         else:
             self.act2b = None
             self.conv2b = None
-        if reg and attn_layer is not None:
-            self.attn = attn_layer(mid_chs)  # RegNet blocks apply attn btw conv2 & 3
-        else:
-            self.attn = None
+        self.attn = attn_layer(mid_chs) if reg and attn_layer is not None else None
         self.act3 = act_layer()
         self.conv3 = conv_layer(mid_chs, out_chs, 1, gain_init=1. if skipinit else 0.)
-        if not reg and attn_layer is not None:
-            self.attn_last = attn_layer(out_chs)  # ResNet blocks apply attn after conv3
-        else:
-            self.attn_last = None
+        self.attn_last = None if reg or attn_layer is None else attn_layer(out_chs)
         self.drop_path = DropPath(drop_path_rate) if drop_path_rate > 0 else nn.Identity()
         self.skipinit_gain = nn.Parameter(torch.tensor(0.)) if skipinit else None
 
@@ -463,7 +486,7 @@ def create_stem(in_chs, out_chs, stem_type='', conv_layer=None, act_layer=None, 
     if 'deep' in stem_type:
         if 'quad' in stem_type:
             # 4 deep conv stack as in NFNet-F models
-            assert not 'pool' in stem_type
+            assert 'pool' not in stem_type
             stem_chs = (out_chs // 8, out_chs // 4, out_chs // 2, out_chs)
             strides = (2, 1, 1, 2)
             stem_stride = 4
@@ -635,7 +658,11 @@ class NormFreeNet(nn.Module):
             # The paper NFRegNet models have an EfficientNet-like final head convolution.
             self.num_features = make_divisible(cfg.width_factor * cfg.num_features, cfg.ch_div)
             self.final_conv = conv_layer(prev_chs, self.num_features, 1)
-            self.feature_info[-1] = dict(num_chs=self.num_features, reduction=net_stride, module=f'final_conv')
+            self.feature_info[-1] = dict(
+                num_chs=self.num_features,
+                reduction=net_stride,
+                module='final_conv',
+            )
         else:
             self.num_features = prev_chs
             self.final_conv = nn.Identity()
@@ -658,14 +685,13 @@ class NormFreeNet(nn.Module):
 
     @torch.jit.ignore
     def group_matcher(self, coarse=False):
-        matcher = dict(
+        return dict(
             stem=r'^stem',
             blocks=[
                 (r'^stages\.(\d+)' if coarse else r'^stages\.(\d+)\.(\d+)', None),
-                (r'^final_conv', (99999,))
-            ]
+                (r'^final_conv', (99999,)),
+            ],
         )
-        return matcher
 
     @torch.jit.ignore
     def set_grad_checkpointing(self, enable=True):

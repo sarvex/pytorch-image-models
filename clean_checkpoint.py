@@ -39,7 +39,7 @@ def main():
     args = parser.parse_args()
 
     if os.path.exists(args.output):
-        print("Error: Output filename ({}) already exists.".format(args.output))
+        print(f"Error: Output filename ({args.output}) already exists.")
         exit(1)
 
     clean_checkpoint(
@@ -62,7 +62,7 @@ def clean_checkpoint(
 ):
     # Load an existing checkpoint to CPU, strip everything but the state_dict and re-save
     if checkpoint and os.path.isfile(checkpoint):
-        print("=> Loading checkpoint '{}'".format(checkpoint))
+        print(f"=> Loading checkpoint '{checkpoint}'")
         state_dict = load_state_dict(checkpoint, use_ema=use_ema)
         new_state_dict = {}
         for k, v in state_dict.items():
@@ -72,7 +72,7 @@ def clean_checkpoint(
                 continue
             name = k[7:] if k.startswith('module.') else k
             new_state_dict[name] = v
-        print("=> Loaded state_dict from '{}'".format(checkpoint))
+        print(f"=> Loaded state_dict from '{checkpoint}'")
 
         ext = ''
         if output:
@@ -83,7 +83,7 @@ def clean_checkpoint(
             checkpoint_base = os.path.split(checkpoint)[1]
             checkpoint_base = os.path.splitext(checkpoint_base)[0]
 
-        temp_filename = '__' + checkpoint_base
+        temp_filename = f'__{checkpoint_base}'
         if safe_serialization:
             assert _has_safetensors, "`pip install safetensors` to use .safetensors"
             safetensors.torch.save_file(new_state_dict, temp_filename)
@@ -104,10 +104,10 @@ def clean_checkpoint(
             final_filename = '-'.join([checkpoint_base, sha_hash[:8]]) + final_ext
 
         shutil.move(temp_filename, os.path.join(checkpoint_root, final_filename))
-        print("=> Saved state_dict to '{}, SHA256: {}'".format(final_filename, sha_hash))
+        print(f"=> Saved state_dict to '{final_filename}, SHA256: {sha_hash}'")
         return final_filename
     else:
-        print("Error: Checkpoint ({}) doesn't exist".format(checkpoint))
+        print(f"Error: Checkpoint ({checkpoint}) doesn't exist")
         return ''
 
 

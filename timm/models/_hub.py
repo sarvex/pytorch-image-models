@@ -75,7 +75,7 @@ def download_cached_file(url, check_hash=True, progress=False):
         filename = os.path.basename(parts.path)
     cached_file = os.path.join(get_cache_dir(), filename)
     if not os.path.exists(cached_file):
-        _logger.info('Downloading: "{}" to {}\n'.format(url, cached_file))
+        _logger.info(f'Downloading: "{url}" to {cached_file}\n')
         hash_prefix = None
         if check_hash:
             r = HASH_REGEX.search(filename)  # r is Optional[Match[str]]
@@ -194,10 +194,8 @@ def save_config_for_hf(
         model_config: Optional[dict] = None
 ):
     model_config = model_config or {}
-    hf_config = {}
     pretrained_cfg = filter_pretrained_cfg(model.pretrained_cfg, remove_source=True, remove_null=True)
-    # set some values at root config level
-    hf_config['architecture'] = pretrained_cfg.pop('architecture')
+    hf_config = {'architecture': pretrained_cfg.pop('architecture')}
     hf_config['num_classes'] = model_config.get('num_classes', model.num_classes)
     hf_config['num_features'] = model_config.get('num_features', model.num_features)
     global_pool_type = model_config.get('global_pool', getattr(model, 'global_pool', None))
@@ -210,21 +208,19 @@ def save_config_for_hf(
             " Renaming provided 'labels' field to 'label_names'.")
         model_config.setdefault('label_names', model_config.pop('labels'))
 
-    label_names = model_config.pop('label_names', None)
-    if label_names:
+    if label_names := model_config.pop('label_names', None):
         assert isinstance(label_names, (dict, list, tuple))
         # map label id (classifier index) -> unique label name (ie synset for ImageNet, MID for OpenImages)
         # can be a dict id: name if there are id gaps, or tuple/list if no gaps.
         hf_config['label_names'] = label_names
 
-    label_descriptions = model_config.pop('label_descriptions', None)
-    if label_descriptions:
+    if label_descriptions := model_config.pop('label_descriptions', None):
         assert isinstance(label_descriptions, dict)
         # maps label names -> descriptions
         hf_config['label_descriptions'] = label_descriptions
 
     hf_config['pretrained_cfg'] = pretrained_cfg
-    hf_config.update(model_config)
+    hf_config |= model_config
 
     with config_path.open('w') as f:
         json.dump(hf_config, f, indent=2)
@@ -310,8 +306,7 @@ def push_to_hf_hub(
 
 
 def generate_readme(model_card: dict, model_name: str):
-    readme_text = "---\n"
-    readme_text += "tags:\n- image-classification\n- timm\n"
+    readme_text = "---\n" + "tags:\n- image-classification\n- timm\n"
     readme_text += "library_tag: timm\n"
     readme_text += f"license: {model_card.get('license', 'apache-2.0')}\n"
     if 'details' in model_card and 'Dataset' in model_card['details']:
@@ -367,4 +362,4 @@ def _get_safe_alternatives(filename: str) -> Iterable[str]:
     if filename == HF_WEIGHTS_NAME:
         yield HF_SAFE_WEIGHTS_NAME
     if filename != HF_WEIGHTS_NAME and filename.endswith(".bin"):
-        return filename[:-4] + ".safetensors"
+        return f"{filename[:-4]}.safetensors"

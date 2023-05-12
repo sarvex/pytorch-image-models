@@ -33,11 +33,6 @@ def make_divisible(v, divisor=8, min_value=None, round_limit=.9):
 
 def extend_tuple(x, n):
     # pdas a tuple to specified n by padding with last value
-    if not isinstance(x, (tuple, list)):
-        x = (x,)
-    else:
-        x = tuple(x)
+    x = (x, ) if not isinstance(x, (tuple, list)) else tuple(x)
     pad_n = n - len(x)
-    if pad_n <= 0:
-        return x[:n]
-    return x + (x[-1],) * pad_n
+    return x[:n] if pad_n <= 0 else x + (x[-1],) * pad_n

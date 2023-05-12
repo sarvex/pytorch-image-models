@@ -10,8 +10,7 @@ import torch.nn.functional as F
 
 # Calculate symmetric padding for a convolution
 def get_padding(kernel_size: int, stride: int = 1, dilation: int = 1, **_) -> int:
-    padding = ((stride - 1) + dilation * (kernel_size - 1)) // 2
-    return padding
+    return ((stride - 1) + dilation * (kernel_size - 1)) // 2
 
 
 # Calculate asymmetric TensorFlow-like 'SAME' padding for a convolution
@@ -38,19 +37,18 @@ def get_padding_value(padding, kernel_size, **kwargs) -> Tuple[Tuple, bool]:
     if isinstance(padding, str):
         # for any string padding, the padding will be calculated for you, one of three ways
         padding = padding.lower()
-        if padding == 'same':
-            # TF compatible 'SAME' padding, has a performance and GPU memory allocation impact
-            if is_static_pad(kernel_size, **kwargs):
-                # static case, no extra overhead
-                padding = get_padding(kernel_size, **kwargs)
-            else:
-                # dynamic 'SAME' padding, has runtime/GPU memory overhead
-                padding = 0
-                dynamic = True
-        elif padding == 'valid':
+        if (
+            padding == 'same'
+            and is_static_pad(kernel_size, **kwargs)
+            or padding not in ['same', 'valid']
+        ):
+            # static case, no extra overhead
+            padding = get_padding(kernel_size, **kwargs)
+        elif padding == 'same' and not is_static_pad(kernel_size, **kwargs):
+            # dynamic 'SAME' padding, has runtime/GPU memory overhead
+            padding = 0
+            dynamic = True
+        else:
             # 'VALID' padding, same as padding=0
             padding = 0
-        else:
-            # Default to PyTorch style 'same'-ish symmetric padding
-            padding = get_padding(kernel_size, **kwargs)
     return padding, dynamic

@@ -46,9 +46,7 @@ class ReaderImageTar(Reader):
     def __init__(self, root, class_map=''):
         super().__init__()
 
-        class_to_idx = None
-        if class_map:
-            class_to_idx = load_class_map(class_map, root)
+        class_to_idx = load_class_map(class_map, root) if class_map else None
         assert os.path.isfile(root)
         self.root = root
 

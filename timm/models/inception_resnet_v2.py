@@ -78,8 +78,7 @@ class Mixed_5b(nn.Module):
         x1 = self.branch1(x)
         x2 = self.branch2(x)
         x3 = self.branch3(x)
-        out = torch.cat((x0, x1, x2, x3), 1)
-        return out
+        return torch.cat((x0, x1, x2, x3), 1)
 
 
 class Block35(nn.Module):
@@ -133,8 +132,7 @@ class Mixed_6a(nn.Module):
         x0 = self.branch0(x)
         x1 = self.branch1(x)
         x2 = self.branch2(x)
-        out = torch.cat((x0, x1, x2), 1)
-        return out
+        return torch.cat((x0, x1, x2), 1)
 
 
 class Block17(nn.Module):
@@ -191,8 +189,7 @@ class Mixed_7a(nn.Module):
         x1 = self.branch1(x)
         x2 = self.branch2(x)
         x3 = self.branch3(x)
-        out = torch.cat((x0, x1, x2, x3), 1)
-        return out
+        return torch.cat((x0, x1, x2, x3), 1)
 
 
 class Block8(nn.Module):
@@ -307,17 +304,18 @@ class InceptionResnetV2(nn.Module):
         module_map.pop(('classif',))
 
         def _matcher(name):
-            if any([name.startswith(n) for n in ('conv2d_1', 'conv2d_2')]):
+            if any(name.startswith(n) for n in ('conv2d_1', 'conv2d_2')):
                 return 0
-            elif any([name.startswith(n) for n in ('conv2d_3', 'conv2d_4')]):
+            elif any(name.startswith(n) for n in ('conv2d_3', 'conv2d_4')):
                 return 1
-            elif any([name.startswith(n) for n in ('block8', 'conv2d_7')]):
+            elif any(name.startswith(n) for n in ('block8', 'conv2d_7')):
                 return len(module_map) + 1
             else:
-                for k in module_map.keys():
+                for k in module_map:
                     if k == tuple(name.split('.')[:len(k)]):
                         return module_map[k]
                 return float('inf')
+
         return _matcher
 
     @torch.jit.ignore

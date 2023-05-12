@@ -28,12 +28,11 @@ def _create_pool(num_features, num_classes, pool_type='avg', use_conv=False):
 
 def _create_fc(num_features, num_classes, use_conv=False):
     if num_classes <= 0:
-        fc = nn.Identity()  # pass-through (no classifier)
+        return nn.Identity()
     elif use_conv:
-        fc = nn.Conv2d(num_features, num_classes, 1, bias=True)
+        return nn.Conv2d(num_features, num_classes, 1, bias=True)
     else:
-        fc = nn.Linear(num_features, num_classes, bias=True)
-    return fc
+        return nn.Linear(num_features, num_classes, bias=True)
 
 
 def create_classifier(num_features, num_classes, pool_type='avg', use_conv=False):
@@ -83,9 +82,8 @@ class ClassifierHead(nn.Module):
             x = F.dropout(x, p=float(self.drop_rate), training=self.training)
         if pre_logits:
             return x.flatten(1)
-        else:
-            x = self.fc(x)
-            return self.flatten(x)
+        x = self.fc(x)
+        return self.flatten(x)
 
 
 class NormMlpClassifierHead(nn.Module):
@@ -140,14 +138,15 @@ class NormMlpClassifierHead(nn.Module):
             self.flatten = nn.Flatten(1) if global_pool else nn.Identity()
         self.use_conv = self.global_pool.is_identity()
         linear_layer = partial(nn.Conv2d, kernel_size=1) if self.use_conv else nn.Linear
-        if self.hidden_size:
-            if ((isinstance(self.pre_logits.fc, nn.Conv2d) and not self.use_conv) or
-                    (isinstance(self.pre_logits.fc, nn.Linear) and self.use_conv)):
-                with torch.no_grad():
-                    new_fc = linear_layer(self.in_features, self.hidden_size)
-                    new_fc.weight.copy_(self.pre_logits.fc.weight.reshape(new_fc.weight.shape))
-                    new_fc.bias.copy_(self.pre_logits.fc.bias)
-                    self.pre_logits.fc = new_fc
+        if self.hidden_size and (
+            (isinstance(self.pre_logits.fc, nn.Conv2d) and not self.use_conv)
+            or (isinstance(self.pre_logits.fc, nn.Linear) and self.use_conv)
+        ):
+            with torch.no_grad():
+                new_fc = linear_layer(self.in_features, self.hidden_size)
+                new_fc.weight.copy_(self.pre_logits.fc.weight.reshape(new_fc.weight.shape))
+                new_fc.bias.copy_(self.pre_logits.fc.bias)
+                self.pre_logits.fc = new_fc
         self.fc = linear_layer(self.num_features, num_classes) if num_classes > 0 else nn.Identity()
 
     def forward(self, x, pre_logits: bool = False):

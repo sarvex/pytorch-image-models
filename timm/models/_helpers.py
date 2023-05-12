@@ -49,10 +49,10 @@ def load_state_dict(checkpoint_path, use_ema=True):
             elif 'model' in checkpoint:
                 state_dict_key = 'model'
         state_dict = clean_state_dict(checkpoint[state_dict_key] if state_dict_key else checkpoint)
-        _logger.info("Loaded {} from checkpoint '{}'".format(state_dict_key, checkpoint_path))
+        _logger.info(f"Loaded {state_dict_key} from checkpoint '{checkpoint_path}'")
         return state_dict
     else:
-        _logger.error("No checkpoint found at '{}'".format(checkpoint_path))
+        _logger.error(f"No checkpoint found at '{checkpoint_path}'")
         raise FileNotFoundError()
 
 
@@ -67,8 +67,7 @@ def load_checkpoint(model, checkpoint_path, use_ema=True, strict=True, remap=Fal
     state_dict = load_state_dict(checkpoint_path, use_ema)
     if remap:
         state_dict = remap_checkpoint(model, state_dict)
-    incompatible_keys = model.load_state_dict(state_dict, strict=strict)
-    return incompatible_keys
+    return model.load_state_dict(state_dict, strict=strict)
 
 
 def remap_checkpoint(model, state_dict, allow_reshape=True):
@@ -113,14 +112,16 @@ def resume_checkpoint(model, checkpoint_path, optimizer=None, loss_scaler=None, 
                     resume_epoch += 1  # start at the next epoch, old checkpoints incremented before save
 
             if log_info:
-                _logger.info("Loaded checkpoint '{}' (epoch {})".format(checkpoint_path, checkpoint['epoch']))
+                _logger.info(
+                    f"Loaded checkpoint '{checkpoint_path}' (epoch {checkpoint['epoch']})"
+                )
         else:
             model.load_state_dict(checkpoint)
             if log_info:
-                _logger.info("Loaded checkpoint '{}'".format(checkpoint_path))
+                _logger.info(f"Loaded checkpoint '{checkpoint_path}'")
         return resume_epoch
     else:
-        _logger.error("No checkpoint found at '{}'".format(checkpoint_path))
+        _logger.error(f"No checkpoint found at '{checkpoint_path}'")
         raise FileNotFoundError()
 
 

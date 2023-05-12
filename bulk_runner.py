@@ -81,12 +81,12 @@ def cmd_from_args(args) -> Tuple[Union[Callable, str], List[str]]:
         if args.module:
             cmd_args.append("-m")
         cmd_args.append(args.script)
+    elif args.module:
+        raise ValueError(
+            "Don't use both the '--no_python' flag"
+            " and the '--module' flag at the same time."
+        )
     else:
-        if args.module:
-            raise ValueError(
-                "Don't use both the '--no_python' flag"
-                " and the '--module' flag at the same time."
-            )
         cmd = args.script
     cmd_args.extend(args.script_args)
 
@@ -122,17 +122,17 @@ def main():
         results_file = args.results_file or './results.csv'
         results = []
         errors = []
-        print('Running script on these models: {}'.format(', '.join(model_names)))
-        if not args.sort_key:
-            if 'benchmark' in args.script:
-                if any(['train' in a for a in args.script_args]):
-                    sort_key = 'train_samples_per_sec'
-                else:
-                    sort_key = 'infer_samples_per_sec'
-            else:
-                sort_key = 'top1'
-        else:
+        print(f"Running script on these models: {', '.join(model_names)}")
+        if args.sort_key:
             sort_key = args.sort_key
+        elif 'benchmark' in args.script:
+            sort_key = (
+                'train_samples_per_sec'
+                if any('train' in a for a in args.script_args)
+                else 'infer_samples_per_sec'
+            )
+        else:
+            sort_key = 'top1'
         print(f'Script: {args.script}, Args: {args.script_args}, Sort key: {sort_key}')
 
         try:
@@ -160,8 +160,7 @@ def main():
                 print(f"\t {e['model']} ({e.get('error', 'Unknown')})")
         results = list(filter(lambda x: 'error' not in x, results))
 
-        no_sortkey = list(filter(lambda x: sort_key not in x, results))
-        if no_sortkey:
+        if no_sortkey := list(filter(lambda x: sort_key not in x, results)):
             print(f'{len(no_sortkey)} results missing sort key, skipping sort.')
         else:
             results = sorted(results, key=lambda x: x[sort_key], reverse=True)

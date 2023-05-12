@@ -191,12 +191,19 @@ class MultiScaleBlock(nn.Module):
         # different branch could have different embedding size, the first one is the base
         self.blocks = nn.ModuleList()
         for d in range(num_branches):
-            tmp = []
-            for i in range(depth[d]):
-                tmp.append(Block(
-                    dim=dim[d], num_heads=num_heads[d], mlp_ratio=mlp_ratio[d], qkv_bias=qkv_bias,
-                    drop=drop, attn_drop=attn_drop, drop_path=drop_path[i], norm_layer=norm_layer))
-            if len(tmp) != 0:
+            if tmp := [
+                Block(
+                    dim=dim[d],
+                    num_heads=num_heads[d],
+                    mlp_ratio=mlp_ratio[d],
+                    qkv_bias=qkv_bias,
+                    drop=drop,
+                    attn_drop=attn_drop,
+                    drop_path=drop_path[i],
+                    norm_layer=norm_layer,
+                )
+                for i in range(depth[d])
+            ]:
                 self.blocks.append(nn.Sequential(*tmp))
 
         if len(self.blocks) == 0:
@@ -204,10 +211,7 @@ class MultiScaleBlock(nn.Module):
 
         self.projs = nn.ModuleList()
         for d in range(num_branches):
-            if dim[d] == dim[(d + 1) % num_branches] and False:
-                tmp = [nn.Identity()]
-            else:
-                tmp = [norm_layer(dim[d]), act_layer(), nn.Linear(dim[d], dim[(d + 1) % num_branches])]
+            tmp = [norm_layer(dim[d]), act_layer(), nn.Linear(dim[d], dim[(d + 1) % num_branches])]
             self.projs.append(nn.Sequential(*tmp))
 
         self.fusion = nn.ModuleList()
@@ -220,28 +224,30 @@ class MultiScaleBlock(nn.Module):
                         dim=dim[d_], num_heads=nh, mlp_ratio=mlp_ratio[d], qkv_bias=qkv_bias,
                         drop=drop, attn_drop=attn_drop, drop_path=drop_path[-1], norm_layer=norm_layer))
             else:
-                tmp = []
-                for _ in range(depth[-1]):
-                    tmp.append(CrossAttentionBlock(
-                        dim=dim[d_], num_heads=nh, mlp_ratio=mlp_ratio[d], qkv_bias=qkv_bias,
-                        drop=drop, attn_drop=attn_drop, drop_path=drop_path[-1], norm_layer=norm_layer))
+                tmp = [
+                    CrossAttentionBlock(
+                        dim=dim[d_],
+                        num_heads=nh,
+                        mlp_ratio=mlp_ratio[d],
+                        qkv_bias=qkv_bias,
+                        drop=drop,
+                        attn_drop=attn_drop,
+                        drop_path=drop_path[-1],
+                        norm_layer=norm_layer,
+                    )
+                    for _ in range(depth[-1])
+                ]
                 self.fusion.append(nn.Sequential(*tmp))
 
         self.revert_projs = nn.ModuleList()
         for d in range(num_branches):
-            if dim[(d + 1) % num_branches] == dim[d] and False:
-                tmp = [nn.Identity()]
-            else:
-                tmp = [norm_layer(dim[(d + 1) % num_branches]), act_layer(),
-                       nn.Linear(dim[(d + 1) % num_branches], dim[d])]
+            tmp = [norm_layer(dim[(d + 1) % num_branches]), act_layer(),
+                   nn.Linear(dim[(d + 1) % num_branches], dim[d])]
             self.revert_projs.append(nn.Sequential(*tmp))
 
     def forward(self, x: List[torch.Tensor]) -> List[torch.Tensor]:
 
-        outs_b = []
-        for i, block in enumerate(self.blocks):
-            outs_b.append(block(x[i]))
-
+        outs_b = [block(x[i]) for i, block in enumerate(self.blocks)]
         # only take the cls token out
         proj_cls_token = torch.jit.annotate(List[torch.Tensor], [])
         for i, proj in enumerate(self.projs):
@@ -300,7 +306,9 @@ class CrossViT(nn.Module):
         self.global_pool = global_pool
         self.img_size = to_2tuple(img_size)
         img_scale = to_2tuple(img_scale)
-        self.img_size_scaled = [tuple([int(sj * si) for sj in self.img_size]) for si in img_scale]
+        self.img_size_scaled = [
+            tuple(int(sj * si) for sj in self.img_size) for si in img_scale
+        ]
         self.crop_scale = crop_scale  # crop instead of interpolate for scale
         num_patches = _compute_num_patches(self.img_size_scaled, patch_size)
         self.num_branches = len(patch_size)
@@ -319,11 +327,11 @@ class CrossViT(nn.Module):
 
         self.pos_drop = nn.Dropout(p=drop_rate)
 
-        total_depth = sum([sum(x[-2:]) for x in depth])
+        total_depth = sum(sum(x[-2:]) for x in depth)
         dpr = [x.item() for x in torch.linspace(0, drop_path_rate, total_depth)]  # stochastic depth decay rule
         dpr_ptr = 0
         self.blocks = nn.ModuleList()
-        for idx, block_cfg in enumerate(depth):
+        for block_cfg in depth:
             curr_depth = max(block_cfg[:-1]) + block_cfg[-1]
             dpr_ = dpr[dpr_ptr:dpr_ptr + curr_depth]
             blk = MultiScaleBlock(
@@ -402,7 +410,7 @@ class CrossViT(nn.Module):
             x_ = self.pos_drop(x_)
             xs.append(x_)
 
-        for i, blk in enumerate(self.blocks):
+        for blk in self.blocks:
             xs = blk(xs)
 
         # NOTE: was before branch token section, move to here to assure all branch token are before layer norm
@@ -412,7 +420,7 @@ class CrossViT(nn.Module):
     def forward_head(self, xs: List[torch.Tensor], pre_logits: bool = False) -> torch.Tensor:
         xs = [x[:, 1:].mean(dim=1) for x in xs] if self.global_pool == 'avg' else [x[:, 0] for x in xs]
         if pre_logits or isinstance(self.head[0], nn.Identity):
-            return torch.cat([x for x in xs], dim=1)
+            return torch.cat(list(xs), dim=1)
         return torch.mean(torch.stack([head(xs[i]) for i, head in enumerate(self.head)], dim=0), dim=0)
 
     def forward(self, x):
@@ -446,8 +454,9 @@ def crossvit_tiny_240(pretrained=False, **kwargs):
     model_args = dict(
         img_scale=(1.0, 224/240), patch_size=[12, 16], embed_dim=[96, 192], depth=[[1, 4, 0], [1, 4, 0], [1, 4, 0]],
         num_heads=[3, 3], mlp_ratio=[4, 4, 1], **kwargs)
-    model = _create_crossvit(variant='crossvit_tiny_240', pretrained=pretrained, **model_args)
-    return model
+    return _create_crossvit(
+        variant='crossvit_tiny_240', pretrained=pretrained, **model_args
+    )
 
 
 @register_model
@@ -455,8 +464,9 @@ def crossvit_small_240(pretrained=False, **kwargs):
     model_args = dict(
         img_scale=(1.0, 224/240), patch_size=[12, 16], embed_dim=[192, 384], depth=[[1, 4, 0], [1, 4, 0], [1, 4, 0]],
         num_heads=[6, 6], mlp_ratio=[4, 4, 1], **kwargs)
-    model = _create_crossvit(variant='crossvit_small_240', pretrained=pretrained, **model_args)
-    return model
+    return _create_crossvit(
+        variant='crossvit_small_240', pretrained=pretrained, **model_args
+    )
 
 
 @register_model
@@ -464,8 +474,9 @@ def crossvit_base_240(pretrained=False, **kwargs):
     model_args = dict(
         img_scale=(1.0, 224/240), patch_size=[12, 16], embed_dim=[384, 768], depth=[[1, 4, 0], [1, 4, 0], [1, 4, 0]],
         num_heads=[12, 12], mlp_ratio=[4, 4, 1], **kwargs)
-    model = _create_crossvit(variant='crossvit_base_240', pretrained=pretrained, **model_args)
-    return model
+    return _create_crossvit(
+        variant='crossvit_base_240', pretrained=pretrained, **model_args
+    )
 
 
 @register_model
@@ -473,8 +484,9 @@ def crossvit_9_240(pretrained=False, **kwargs):
     model_args = dict(
         img_scale=(1.0, 224/240), patch_size=[12, 16], embed_dim=[128, 256], depth=[[1, 3, 0], [1, 3, 0], [1, 3, 0]],
         num_heads=[4, 4], mlp_ratio=[3, 3, 1], **kwargs)
-    model = _create_crossvit(variant='crossvit_9_240', pretrained=pretrained, **model_args)
-    return model
+    return _create_crossvit(
+        variant='crossvit_9_240', pretrained=pretrained, **model_args
+    )
 
 
 @register_model
@@ -482,8 +494,9 @@ def crossvit_15_240(pretrained=False, **kwargs):
     model_args = dict(
         img_scale=(1.0, 224/240), patch_size=[12, 16], embed_dim=[192, 384], depth=[[1, 5, 0], [1, 5, 0], [1, 5, 0]],
         num_heads=[6, 6], mlp_ratio=[3, 3, 1], **kwargs)
-    model = _create_crossvit(variant='crossvit_15_240', pretrained=pretrained, **model_args)
-    return model
+    return _create_crossvit(
+        variant='crossvit_15_240', pretrained=pretrained, **model_args
+    )
 
 
 @register_model
@@ -491,8 +504,9 @@ def crossvit_18_240(pretrained=False, **kwargs):
     model_args = dict(
         img_scale=(1.0, 224 / 240), patch_size=[12, 16], embed_dim=[224, 448], depth=[[1, 6, 0], [1, 6, 0], [1, 6, 0]],
         num_heads=[7, 7], mlp_ratio=[3, 3, 1], **kwargs)
-    model = _create_crossvit(variant='crossvit_18_240', pretrained=pretrained, **model_args)
-    return model
+    return _create_crossvit(
+        variant='crossvit_18_240', pretrained=pretrained, **model_args
+    )
 
 
 @register_model
@@ -500,8 +514,9 @@ def crossvit_9_dagger_240(pretrained=False, **kwargs):
     model_args = dict(
         img_scale=(1.0, 224 / 240), patch_size=[12, 16], embed_dim=[128, 256], depth=[[1, 3, 0], [1, 3, 0], [1, 3, 0]],
         num_heads=[4, 4], mlp_ratio=[3, 3, 1], multi_conv=True, **kwargs)
-    model = _create_crossvit(variant='crossvit_9_dagger_240', pretrained=pretrained, **model_args)
-    return model
+    return _create_crossvit(
+        variant='crossvit_9_dagger_240', pretrained=pretrained, **model_args
+    )
 
 
 @register_model
@@ -509,8 +524,9 @@ def crossvit_15_dagger_240(pretrained=False, **kwargs):
     model_args = dict(
         img_scale=(1.0, 224/240), patch_size=[12, 16], embed_dim=[192, 384], depth=[[1, 5, 0], [1, 5, 0], [1, 5, 0]],
         num_heads=[6, 6], mlp_ratio=[3, 3, 1], multi_conv=True, **kwargs)
-    model = _create_crossvit(variant='crossvit_15_dagger_240', pretrained=pretrained, **model_args)
-    return model
+    return _create_crossvit(
+        variant='crossvit_15_dagger_240', pretrained=pretrained, **model_args
+    )
 
 
 @register_model
@@ -518,8 +534,9 @@ def crossvit_15_dagger_408(pretrained=False, **kwargs):
     model_args = dict(
         img_scale=(1.0, 384/408), patch_size=[12, 16], embed_dim=[192, 384], depth=[[1, 5, 0], [1, 5, 0], [1, 5, 0]],
         num_heads=[6, 6], mlp_ratio=[3, 3, 1], multi_conv=True, **kwargs)
-    model = _create_crossvit(variant='crossvit_15_dagger_408', pretrained=pretrained, **model_args)
-    return model
+    return _create_crossvit(
+        variant='crossvit_15_dagger_408', pretrained=pretrained, **model_args
+    )
 
 
 @register_model
@@ -527,8 +544,9 @@ def crossvit_18_dagger_240(pretrained=False, **kwargs):
     model_args = dict(
         img_scale=(1.0, 224/240), patch_size=[12, 16], embed_dim=[224, 448], depth=[[1, 6, 0], [1, 6, 0], [1, 6, 0]],
         num_heads=[7, 7], mlp_ratio=[3, 3, 1], multi_conv=True, **kwargs)
-    model = _create_crossvit(variant='crossvit_18_dagger_240', pretrained=pretrained, **model_args)
-    return model
+    return _create_crossvit(
+        variant='crossvit_18_dagger_240', pretrained=pretrained, **model_args
+    )
 
 
 @register_model
@@ -536,5 +554,6 @@ def crossvit_18_dagger_408(pretrained=False, **kwargs):
     model_args = dict(
         img_scale=(1.0, 384/408), patch_size=[12, 16], embed_dim=[224, 448], depth=[[1, 6, 0], [1, 6, 0], [1, 6, 0]],
         num_heads=[7, 7], mlp_ratio=[3, 3, 1], multi_conv=True, **kwargs)
-    model = _create_crossvit(variant='crossvit_18_dagger_408', pretrained=pretrained, **model_args)
-    return model
+    return _create_crossvit(
+        variant='crossvit_18_dagger_408', pretrained=pretrained, **model_args
+    )

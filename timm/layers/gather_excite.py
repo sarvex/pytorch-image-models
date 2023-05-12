@@ -40,7 +40,7 @@ class GatherExcite(nn.Module):
                 self.gather.add_module(
                     'conv1', create_conv2d(channels, channels, kernel_size=feat_size, stride=1, depthwise=True))
                 if norm_layer:
-                    self.gather.add_module(f'norm1', nn.BatchNorm2d(channels))
+                    self.gather.add_module('norm1', nn.BatchNorm2d(channels))
             else:
                 assert extent % 2 == 0
                 num_conv = int(math.log2(extent))
@@ -71,19 +71,18 @@ class GatherExcite(nn.Module):
         size = x.shape[-2:]
         if self.gather is not None:
             x_ge = self.gather(x)
+        elif self.extent == 0:
+            # global extent
+            x_ge = x.mean(dim=(2, 3), keepdims=True)
+            if self.add_maxpool:
+                # experimental codepath, may remove or change
+                x_ge = 0.5 * x_ge + 0.5 * x.amax((2, 3), keepdim=True)
         else:
-            if self.extent == 0:
-                # global extent
-                x_ge = x.mean(dim=(2, 3), keepdims=True)
-                if self.add_maxpool:
-                    # experimental codepath, may remove or change
-                    x_ge = 0.5 * x_ge + 0.5 * x.amax((2, 3), keepdim=True)
-            else:
-                x_ge = F.avg_pool2d(
-                    x, kernel_size=self.gk, stride=self.gs, padding=self.gk // 2, count_include_pad=False)
-                if self.add_maxpool:
-                    # experimental codepath, may remove or change
-                    x_ge = 0.5 * x_ge + 0.5 * F.max_pool2d(x, kernel_size=self.gk, stride=self.gs, padding=self.gk // 2)
+            x_ge = F.avg_pool2d(
+                x, kernel_size=self.gk, stride=self.gs, padding=self.gk // 2, count_include_pad=False)
+            if self.add_maxpool:
+                # experimental codepath, may remove or change
+                x_ge = 0.5 * x_ge + 0.5 * F.max_pool2d(x, kernel_size=self.gk, stride=self.gs, padding=self.gk // 2)
         x_ge = self.mlp(x_ge)
         if x_ge.shape[-1] != 1 or x_ge.shape[-2] != 1:
             x_ge = F.interpolate(x_ge, size=size)

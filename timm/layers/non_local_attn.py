@@ -61,10 +61,7 @@ class NonLocalAttn(nn.Module):
                     m.weight, mode='fan_out', nonlinearity='relu')
                 if len(list(m.parameters())) > 1:
                     nn.init.constant_(m.bias, 0.0)
-            elif isinstance(m, nn.BatchNorm2d):
-                nn.init.constant_(m.weight, 0)
-                nn.init.constant_(m.bias, 0)
-            elif isinstance(m, nn.GroupNorm):
+            elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
                 nn.init.constant_(m.weight, 0)
                 nn.init.constant_(m.bias, 0)
 

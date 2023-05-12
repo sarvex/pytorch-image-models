@@ -90,7 +90,7 @@ def transforms_imagenet_train(
             img_size_min = img_size
         aa_params = dict(
             translate_const=int(img_size_min * 0.45),
-            img_mean=tuple([min(255, round(255 * x)) for x in mean]),
+            img_mean=tuple(min(255, round(255 * x)) for x in mean),
         )
         if interpolation and interpolation != 'random':
             aa_params['interpolation'] = str_to_pil_interp(interpolation)
@@ -107,7 +107,7 @@ def transforms_imagenet_train(
         if isinstance(color_jitter, (list, tuple)):
             # color jitter should be a 3-tuple/list if spec brightness/contrast/saturation
             # or 4 if also augmenting hue
-            assert len(color_jitter) in (3, 4)
+            assert len(color_jitter) in {3, 4}
         else:
             # if it's a scalar, duplicate for brightness, contrast, and saturation, no hue
             color_jitter = (float(color_jitter),) * 3
@@ -147,7 +147,7 @@ def transforms_imagenet_eval(
 
     if isinstance(img_size, (tuple, list)):
         assert len(img_size) == 2
-        scale_size = tuple([math.floor(x / crop_pct) for x in img_size])
+        scale_size = tuple(math.floor(x / crop_pct) for x in img_size)
     else:
         scale_size = math.floor(img_size / crop_pct)
         scale_size = (scale_size, scale_size)
@@ -226,47 +226,45 @@ def create_transform(
     if tf_preprocessing and use_prefetcher:
         assert not separate, "Separate transforms not supported for TF preprocessing"
         from timm.data.tf_preprocessing import TfPreprocessTransform
-        transform = TfPreprocessTransform(
-            is_training=is_training, size=img_size, interpolation=interpolation)
+        return TfPreprocessTransform(
+            is_training=is_training, size=img_size, interpolation=interpolation
+        )
+    elif is_training and no_aug:
+        assert not separate, "Cannot perform split augmentation with no_aug"
+        return transforms_noaug_train(
+            img_size,
+            interpolation=interpolation,
+            use_prefetcher=use_prefetcher,
+            mean=mean,
+            std=std,
+        )
+    elif is_training:
+        return transforms_imagenet_train(
+            img_size,
+            scale=scale,
+            ratio=ratio,
+            hflip=hflip,
+            vflip=vflip,
+            color_jitter=color_jitter,
+            auto_augment=auto_augment,
+            interpolation=interpolation,
+            use_prefetcher=use_prefetcher,
+            mean=mean,
+            std=std,
+            re_prob=re_prob,
+            re_mode=re_mode,
+            re_count=re_count,
+            re_num_splits=re_num_splits,
+            separate=separate,
+        )
     else:
-        if is_training and no_aug:
-            assert not separate, "Cannot perform split augmentation with no_aug"
-            transform = transforms_noaug_train(
-                img_size,
-                interpolation=interpolation,
-                use_prefetcher=use_prefetcher,
-                mean=mean,
-                std=std,
-            )
-        elif is_training:
-            transform = transforms_imagenet_train(
-                img_size,
-                scale=scale,
-                ratio=ratio,
-                hflip=hflip,
-                vflip=vflip,
-                color_jitter=color_jitter,
-                auto_augment=auto_augment,
-                interpolation=interpolation,
-                use_prefetcher=use_prefetcher,
-                mean=mean,
-                std=std,
-                re_prob=re_prob,
-                re_mode=re_mode,
-                re_count=re_count,
-                re_num_splits=re_num_splits,
-                separate=separate,
-            )
-        else:
-            assert not separate, "Separate transforms not supported for validation preprocessing"
-            transform = transforms_imagenet_eval(
-                img_size,
-                interpolation=interpolation,
-                use_prefetcher=use_prefetcher,
-                mean=mean,
-                std=std,
-                crop_pct=crop_pct,
-                crop_mode=crop_mode,
-            )
-
-    return transform
+        assert not separate, "Separate transforms not supported for validation preprocessing"
+        return transforms_imagenet_eval(
+            img_size,
+            interpolation=interpolation,
+            use_prefetcher=use_prefetcher,
+            mean=mean,
+            std=std,
+            crop_pct=crop_pct,
+            crop_mode=crop_mode,
+        )

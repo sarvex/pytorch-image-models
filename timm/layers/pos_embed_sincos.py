@@ -30,8 +30,13 @@ def inv_freq_bands(
         dtype: torch.dtype = torch.float32,
         device: Optional[torch.device] = None,
 ) -> torch.Tensor:
-    inv_freq = 1. / (temperature ** (torch.arange(0, num_bands, step, dtype=dtype, device=device) / num_bands))
-    return inv_freq
+    return 1.0 / (
+        temperature
+        ** (
+            torch.arange(0, num_bands, step, dtype=dtype, device=device)
+            / num_bands
+        )
+    )
 
 
 def build_sincos2d_pos_embed(
@@ -69,8 +74,9 @@ def build_sincos2d_pos_embed(
     # FIXME add support for unflattened spatial dim?
 
     stack_dim = 2 if interleave_sin_cos else 1  # stack sin, cos, sin, cos  instead of sin sin cos cos
-    pos_emb = torch.stack([torch.sin(pos2), torch.cos(pos2)], dim=stack_dim).flatten(1)
-    return pos_emb
+    return torch.stack(
+        [torch.sin(pos2), torch.cos(pos2)], dim=stack_dim
+    ).flatten(1)
 
 
 def build_fourier_pos_embed(

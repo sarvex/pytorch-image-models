@@ -404,7 +404,7 @@ class RegStage(nn.Module):
             block_in_chs = in_chs if i == 0 else out_chs
             block_dilation = (first_dilation, dilation)
             dpr = drop_path_rates[i] if drop_path_rates is not None else 0.
-            name = "b{}".format(i + 1)
+            name = f"b{i + 1}"
             self.add_module(
                 name, block_fn(
                     block_in_chs,
@@ -481,7 +481,7 @@ class RegNet(nn.Module):
         assert len(per_stage_args) == 4
         block_fn = PreBottleneck if cfg.preact else Bottleneck
         for i, stage_args in enumerate(per_stage_args):
-            stage_name = "s{}".format(i + 1)
+            stage_name = f"s{i + 1}"
             self.add_module(stage_name, RegStage(in_chs=prev_width, block_fn=block_fn, **stage_args, **common_args))
             prev_width = stage_args['out_chs']
             curr_stride *= stage_args['stride']

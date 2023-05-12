@@ -323,8 +323,7 @@ default_cfgs = {
 
 
 def get_padding(kernel_size, stride, dilation=1):
-    padding = ((stride - 1) + dilation * (kernel_size - 1)) // 2
-    return padding
+    return ((stride - 1) + dilation * (kernel_size - 1)) // 2
 
 
 def create_aa(aa_layer, channels, stride=2, enable=True):
@@ -699,12 +698,12 @@ class ResNet(nn.Module):
             block_args (dict): Extra kwargs to pass through to block module
         """
         super(ResNet, self).__init__()
-        block_args = block_args or dict()
+        block_args = block_args or {}
         assert output_stride in (8, 16, 32)
         self.num_classes = num_classes
         self.drop_rate = drop_rate
         self.grad_checkpointing = False
-        
+
         act_layer = get_act_layer(act_layer)
         norm_layer = get_norm_layer(norm_layer)
 
@@ -737,17 +736,20 @@ class ResNet(nn.Module):
                 norm_layer(inplanes),
                 act_layer(inplace=True)
             ]))
-        else:
-            if aa_layer is not None:
-                if issubclass(aa_layer, nn.AvgPool2d):
-                    self.maxpool = aa_layer(2)
-                else:
-                    self.maxpool = nn.Sequential(*[
-                        nn.MaxPool2d(kernel_size=3, stride=1, padding=1),
-                        aa_layer(channels=inplanes, stride=2)])
-            else:
-                self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+        elif aa_layer is None:
+            self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
 
+        else:
+            self.maxpool = (
+                aa_layer(2)
+                if issubclass(aa_layer, nn.AvgPool2d)
+                else nn.Sequential(
+                    *[
+                        nn.MaxPool2d(kernel_size=3, stride=1, padding=1),
+                        aa_layer(channels=inplanes, stride=2),
+                    ]
+                )
+            )
         # Feature Blocks
         channels = [64, 128, 256, 512]
         stage_modules, stage_feature_info = make_blocks(
@@ -795,8 +797,10 @@ class ResNet(nn.Module):
 
     @torch.jit.ignore
     def group_matcher(self, coarse=False):
-        matcher = dict(stem=r'^conv1|bn1|maxpool', blocks=r'^layer(\d+)' if coarse else r'^layer(\d+)\.(\d+)')
-        return matcher
+        return dict(
+            stem=r'^conv1|bn1|maxpool',
+            blocks=r'^layer(\d+)' if coarse else r'^layer(\d+)\.(\d+)',
+        )
 
     @torch.jit.ignore
     def set_grad_checkpointing(self, enable=True):

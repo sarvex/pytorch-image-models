@@ -111,8 +111,7 @@ class FactorizedReduction(nn.Module):
         x = self.act(x)
         x_path1 = self.path_1(x)
         x_path2 = self.path_2(x)
-        out = self.final_path_bn(torch.cat([x_path1, x_path2], 1))
-        return out
+        return self.final_path_bn(torch.cat([x_path1, x_path2], 1))
 
 
 class CellBase(nn.Module):
@@ -141,8 +140,16 @@ class CellBase(nn.Module):
             x_comb_iter_4_right = x_right
         x_comb_iter_4 = x_comb_iter_4_left + x_comb_iter_4_right
 
-        x_out = torch.cat([x_comb_iter_0, x_comb_iter_1, x_comb_iter_2, x_comb_iter_3, x_comb_iter_4], 1)
-        return x_out
+        return torch.cat(
+            [
+                x_comb_iter_0,
+                x_comb_iter_1,
+                x_comb_iter_2,
+                x_comb_iter_3,
+                x_comb_iter_4,
+            ],
+            1,
+        )
 
 
 class CellStem0(CellBase):
@@ -179,8 +186,7 @@ class CellStem0(CellBase):
 
     def forward(self, x_left):
         x_right = self.conv_1x1(x_left)
-        x_out = self.cell_forward(x_left, x_right)
-        return x_out
+        return self.cell_forward(x_left, x_right)
 
 
 class Cell(CellBase):
@@ -231,8 +237,7 @@ class Cell(CellBase):
     def forward(self, x_left, x_right):
         x_left = self.conv_prev_1x1(x_left)
         x_right = self.conv_1x1(x_right)
-        x_out = self.cell_forward(x_left, x_right)
-        return x_out
+        return self.cell_forward(x_left, x_right)
 
 
 class PNASNet5Large(nn.Module):

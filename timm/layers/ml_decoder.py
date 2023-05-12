@@ -104,9 +104,7 @@ class MLDecoder(nn.Module):
     def __init__(self, num_classes, num_of_groups=-1, decoder_embedding=768, initial_num_features=2048):
         super(MLDecoder, self).__init__()
         embed_len_decoder = 100 if num_of_groups < 0 else num_of_groups
-        if embed_len_decoder > num_classes:
-            embed_len_decoder = num_classes
-
+        embed_len_decoder = min(embed_len_decoder, num_classes)
         # switching to 768 initial embeddings
         decoder_embedding = 768 if decoder_embedding < 0 else decoder_embedding
         self.embed_standart = nn.Linear(initial_num_features, decoder_embedding)
@@ -134,10 +132,7 @@ class MLDecoder(nn.Module):
         self.group_fc = GroupFC(embed_len_decoder)
 
     def forward(self, x):
-        if len(x.shape) == 4:  # [bs,2048, 7,7]
-            embedding_spatial = x.flatten(2).transpose(1, 2)
-        else:  # [bs, 197,468]
-            embedding_spatial = x
+        embedding_spatial = x.flatten(2).transpose(1, 2) if len(x.shape) == 4 else x
         embedding_spatial_786 = self.embed_standart(embedding_spatial)
         embedding_spatial_786 = torch.nn.functional.relu(embedding_spatial_786, inplace=True)
 
@@ -152,5 +147,4 @@ class MLDecoder(nn.Module):
         self.group_fc(h, self.duplicate_pooling, out_extrap)
         h_out = out_extrap.flatten(1)[:, :self.num_classes]
         h_out += self.duplicate_pooling_bias
-        logits = h_out
-        return logits
+        return h_out

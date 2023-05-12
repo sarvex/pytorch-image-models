@@ -131,8 +131,8 @@ def _mobilevitv2_block(d, c, s, transformer_depth, patch_size=2, br=2.0, transfo
 def _mobilevitv2_cfg(multiplier=1.0):
     chs = (64, 128, 256, 384, 512)
     if multiplier != 1.0:
-        chs = tuple([int(c * multiplier) for c in chs])
-    cfg = ByoModelCfg(
+        chs = tuple(int(c * multiplier) for c in chs)
+    return ByoModelCfg(
         blocks=(
             _inverted_residual_block(d=1, c=chs[0], s=1, br=2.0),
             _inverted_residual_block(d=2, c=chs[1], s=2, br=2.0),
@@ -146,7 +146,6 @@ def _mobilevitv2_cfg(multiplier=1.0):
         downsample='',
         act_layer='silu',
     )
-    return cfg
 
 
 model_cfgs = dict(

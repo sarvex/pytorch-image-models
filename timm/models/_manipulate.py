@@ -14,11 +14,7 @@ __all__ = ['model_parameters', 'named_apply', 'named_modules', 'named_modules_wi
 
 
 def model_parameters(model, exclude_head=False):
-    if exclude_head:
-        # FIXME this a bit of a quick and dirty hack to skip classifier head params based on ordering
-        return [p for p in model.parameters()][:-2]
-    else:
-        return model.parameters()
+    return list(model.parameters())[:-2] if exclude_head else model.parameters()
 
 
 def named_apply(fn: Callable, module: nn.Module, name='', depth_first=True, include_root=False) -> nn.Module:
@@ -89,9 +85,7 @@ def group_with_matcher(
             return float('inf'),  # un-matched layers (neck, head) mapped to largest ordinal
         else:
             ord = group_matcher(name)
-            if not isinstance(ord, collections.abc.Iterable):
-                return ord,
-            return tuple(ord)
+            return (ord, ) if not isinstance(ord, collections.abc.Iterable) else tuple(ord)
 
     # map layers into groups via ordinals (ints or tuples of ints) from matcher
     grouping = defaultdict(list)
@@ -156,11 +150,9 @@ def flatten_modules(named_modules, depth=1, prefix='', module_types='sequential'
         else:
             if prefix_is_tuple:
                 name = prefix + (name,)
-                yield name, module
-            else:
-                if prefix:
-                    name = '.'.join([prefix, name])
-                yield name, module
+            elif prefix:
+                name = '.'.join([prefix, name])
+            yield name, module
 
 
 def checkpoint_seq(
@@ -248,11 +240,10 @@ def adapt_input_conv(in_chans, conv_weight):
     elif in_chans != 3:
         if I != 3:
             raise NotImplementedError('Weight format not supported by conversion.')
-        else:
-            # NOTE this strategy should be better than random init, but there could be other combinations of
-            # the original RGB input layer weights that'd work better for specific cases.
-            repeat = int(math.ceil(in_chans / 3))
-            conv_weight = conv_weight.repeat(1, repeat, 1, 1)[:, :in_chans, :, :]
-            conv_weight *= (3 / float(in_chans))
+        # NOTE this strategy should be better than random init, but there could be other combinations of
+        # the original RGB input layer weights that'd work better for specific cases.
+        repeat = int(math.ceil(in_chans / 3))
+        conv_weight = conv_weight.repeat(1, repeat, 1, 1)[:, :in_chans, :, :]
+        conv_weight *= (3 / float(in_chans))
     conv_weight = conv_weight.to(conv_type)
     return conv_weight

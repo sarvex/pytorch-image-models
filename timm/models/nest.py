@@ -333,15 +333,19 @@ class Nest(nn.Module):
 
     @torch.jit.ignore
     def group_matcher(self, coarse=False):
-        matcher = dict(
+        return dict(
             stem=r'^patch_embed',  # stem and embed
             blocks=[
-                (r'^levels\.(\d+)' if coarse else r'^levels\.(\d+)\.transformer_encoder\.(\d+)', None),
+                (
+                    r'^levels\.(\d+)'
+                    if coarse
+                    else r'^levels\.(\d+)\.transformer_encoder\.(\d+)',
+                    None,
+                ),
                 (r'^levels\.(\d+)\.(?:pool|pos_embed)', (0,)),
-                (r'^norm', (99999,))
-            ]
+                (r'^norm', (99999,)),
+            ],
         )
-        return matcher
 
     @torch.jit.ignore
     def set_grad_checkpointing(self, enable=True):
@@ -381,13 +385,11 @@ def _init_nest_weights(module: nn.Module, name: str = '', head_bias: float = 0.)
     Can replicate Jax implementation. Otherwise follows vision_transformer.py
     """
     if isinstance(module, nn.Linear):
+        trunc_normal_(module.weight, std=.02, a=-2, b=2)
         if name.startswith('head'):
-            trunc_normal_(module.weight, std=.02, a=-2, b=2)
             nn.init.constant_(module.bias, head_bias)
-        else:
-            trunc_normal_(module.weight, std=.02, a=-2, b=2)
-            if module.bias is not None:
-                nn.init.zeros_(module.bias)
+        elif module.bias is not None:
+            nn.init.zeros_(module.bias)
     elif isinstance(module, nn.Conv2d):
         trunc_normal_(module.weight, std=.02, a=-2, b=2)
         if module.bias is not None:
@@ -421,13 +423,14 @@ def checkpoint_filter_fn(state_dict, model):
 
 
 def _create_nest(variant, pretrained=False, **kwargs):
-    model = build_model_with_cfg(
-        Nest, variant, pretrained,
+    return build_model_with_cfg(
+        Nest,
+        variant,
+        pretrained,
         feature_cfg=dict(out_indices=(0, 1, 2), flatten_sequential=True),
         pretrained_filter_fn=checkpoint_filter_fn,
-        **kwargs)
-
-    return model
+        **kwargs
+    )
 
 
 @register_model
@@ -436,8 +439,7 @@ def nest_base(pretrained=False, **kwargs):
     """
     model_kwargs = dict(
         embed_dims=(128, 256, 512), num_heads=(4, 8, 16), depths=(2, 2, 20), **kwargs)
-    model = _create_nest('nest_base', pretrained=pretrained, **model_kwargs)
-    return model
+    return _create_nest('nest_base', pretrained=pretrained, **model_kwargs)
 
 
 @register_model
@@ -445,8 +447,7 @@ def nest_small(pretrained=False, **kwargs):
     """ Nest-S @ 224x224
     """
     model_kwargs = dict(embed_dims=(96, 192, 384), num_heads=(3, 6, 12), depths=(2, 2, 20), **kwargs)
-    model = _create_nest('nest_small', pretrained=pretrained, **model_kwargs)
-    return model
+    return _create_nest('nest_small', pretrained=pretrained, **model_kwargs)
 
 
 @register_model
@@ -454,8 +455,7 @@ def nest_tiny(pretrained=False, **kwargs):
     """ Nest-T @ 224x224
     """
     model_kwargs = dict(embed_dims=(96, 192, 384), num_heads=(3, 6, 12), depths=(2, 2, 8), **kwargs)
-    model = _create_nest('nest_tiny', pretrained=pretrained, **model_kwargs)
-    return model
+    return _create_nest('nest_tiny', pretrained=pretrained, **model_kwargs)
 
 
 @register_model
@@ -464,8 +464,7 @@ def jx_nest_base(pretrained=False, **kwargs):
     """
     kwargs['pad_type'] = 'same'
     model_kwargs = dict(embed_dims=(128, 256, 512), num_heads=(4, 8, 16), depths=(2, 2, 20), **kwargs)
-    model = _create_nest('jx_nest_base', pretrained=pretrained, **model_kwargs)
-    return model
+    return _create_nest('jx_nest_base', pretrained=pretrained, **model_kwargs)
 
 
 @register_model
@@ -474,8 +473,7 @@ def jx_nest_small(pretrained=False, **kwargs):
     """
     kwargs['pad_type'] = 'same'
     model_kwargs = dict(embed_dims=(96, 192, 384), num_heads=(3, 6, 12), depths=(2, 2, 20), **kwargs)
-    model = _create_nest('jx_nest_small', pretrained=pretrained, **model_kwargs)
-    return model
+    return _create_nest('jx_nest_small', pretrained=pretrained, **model_kwargs)
 
 
 @register_model
@@ -484,5 +482,4 @@ def jx_nest_tiny(pretrained=False, **kwargs):
     """
     kwargs['pad_type'] = 'same'
     model_kwargs = dict(embed_dims=(96, 192, 384), num_heads=(3, 6, 12), depths=(2, 2, 8), **kwargs)
-    model = _create_nest('jx_nest_tiny', pretrained=pretrained, **model_kwargs)
-    return model
+    return _create_nest('jx_nest_tiny', pretrained=pretrained, **model_kwargs)

@@ -150,8 +150,7 @@ def basic_blocks(
             drop=drop_rate, drop_path=block_dpr,
             layer_scale_init_value=layer_scale_init_value,
         ))
-    blocks = nn.Sequential(*blocks)
-    return blocks
+    return nn.Sequential(*blocks)
 
 
 class PoolFormer(nn.Module):
@@ -217,8 +216,8 @@ class PoolFormer(nn.Module):
     def _init_weights(self, m):
         if isinstance(m, nn.Linear):
             trunc_normal_(m.weight, std=.02)
-            if isinstance(m, nn.Linear) and m.bias is not None:
-                nn.init.constant_(m.bias, 0)
+        if isinstance(m, nn.Linear) and m.bias is not None:
+            nn.init.constant_(m.bias, 0)
 
     @torch.jit.ignore
     def group_matcher(self, coarse=False):
@@ -265,30 +264,35 @@ class PoolFormer(nn.Module):
 def _create_poolformer(variant, pretrained=False, **kwargs):
     if kwargs.get('features_only', None):
         raise RuntimeError('features_only not implemented for Vision Transformer models.')
-    model = build_model_with_cfg(PoolFormer, variant, pretrained, **kwargs)
-    return model
+    return build_model_with_cfg(PoolFormer, variant, pretrained, **kwargs)
 
 
 @register_model
 def poolformer_s12(pretrained=False, **kwargs):
     """ PoolFormer-S12 model, Params: 12M """
-    model = _create_poolformer('poolformer_s12', pretrained=pretrained, layers=(2, 2, 6, 2), **kwargs)
-    return model
+    return _create_poolformer(
+        'poolformer_s12', pretrained=pretrained, layers=(2, 2, 6, 2), **kwargs
+    )
 
 
 @register_model
 def poolformer_s24(pretrained=False, **kwargs):
     """ PoolFormer-S24 model, Params: 21M """
-    model = _create_poolformer('poolformer_s24', pretrained=pretrained, layers=(4, 4, 12, 4), **kwargs)
-    return model
+    return _create_poolformer(
+        'poolformer_s24', pretrained=pretrained, layers=(4, 4, 12, 4), **kwargs
+    )
 
 
 @register_model
 def poolformer_s36(pretrained=False, **kwargs):
     """ PoolFormer-S36 model, Params: 31M """
-    model = _create_poolformer(
-        'poolformer_s36', pretrained=pretrained, layers=(6, 6, 18, 6), layer_scale_init_value=1e-6, **kwargs)
-    return model
+    return _create_poolformer(
+        'poolformer_s36',
+        pretrained=pretrained,
+        layers=(6, 6, 18, 6),
+        layer_scale_init_value=1e-6,
+        **kwargs
+    )
 
 
 @register_model
@@ -296,10 +300,14 @@ def poolformer_m36(pretrained=False, **kwargs):
     """ PoolFormer-M36 model, Params: 56M """
     layers = (6, 6, 18, 6)
     embed_dims = (96, 192, 384, 768)
-    model = _create_poolformer(
-        'poolformer_m36', pretrained=pretrained, layers=layers, embed_dims=embed_dims,
-        layer_scale_init_value=1e-6, **kwargs)
-    return model
+    return _create_poolformer(
+        'poolformer_m36',
+        pretrained=pretrained,
+        layers=layers,
+        embed_dims=embed_dims,
+        layer_scale_init_value=1e-6,
+        **kwargs
+    )
 
 
 @register_model
@@ -307,7 +315,11 @@ def poolformer_m48(pretrained=False, **kwargs):
     """ PoolFormer-M48 model, Params: 73M """
     layers = (8, 8, 24, 8)
     embed_dims = (96, 192, 384, 768)
-    model = _create_poolformer(
-        'poolformer_m48', pretrained=pretrained, layers=layers, embed_dims=embed_dims,
-        layer_scale_init_value=1e-6, **kwargs)
-    return model
+    return _create_poolformer(
+        'poolformer_m48',
+        pretrained=pretrained,
+        layers=layers,
+        embed_dims=embed_dims,
+        layer_scale_init_value=1e-6,
+        **kwargs
+    )

@@ -234,7 +234,7 @@ class Cait(nn.Module):
         self.pos_embed = nn.Parameter(torch.zeros(1, num_patches, embed_dim))
         self.pos_drop = nn.Dropout(p=drop_rate)
 
-        dpr = [drop_path_rate for i in range(depth)]
+        dpr = [drop_path_rate for _ in range(depth)]
         self.blocks = nn.Sequential(*[
             block_layers(
                 dim=embed_dim, num_heads=num_heads, mlp_ratio=mlp_ratio, qkv_bias=qkv_bias,
@@ -242,13 +242,25 @@ class Cait(nn.Module):
                 act_layer=act_layer, attn_block=attn_block, mlp_block=mlp_block, init_values=init_values)
             for i in range(depth)])
 
-        self.blocks_token_only = nn.ModuleList([
-            block_layers_token(
-                dim=embed_dim, num_heads=num_heads, mlp_ratio=mlp_ratio_token_only, qkv_bias=qkv_bias,
-                drop=0.0, attn_drop=0.0, drop_path=0.0, norm_layer=norm_layer,
-                act_layer=act_layer, attn_block=attn_block_token_only,
-                mlp_block=mlp_block_token_only, init_values=init_values)
-            for i in range(depth_token_only)])
+        self.blocks_token_only = nn.ModuleList(
+            [
+                block_layers_token(
+                    dim=embed_dim,
+                    num_heads=num_heads,
+                    mlp_ratio=mlp_ratio_token_only,
+                    qkv_bias=qkv_bias,
+                    drop=0.0,
+                    attn_drop=0.0,
+                    drop_path=0.0,
+                    norm_layer=norm_layer,
+                    act_layer=act_layer,
+                    attn_block=attn_block_token_only,
+                    mlp_block=mlp_block_token_only,
+                    init_values=init_values,
+                )
+                for _ in range(depth_token_only)
+            ]
+        )
 
         self.norm = norm_layer(embed_dim)
 
@@ -279,7 +291,10 @@ class Cait(nn.Module):
     @torch.jit.ignore
     def group_matcher(self, coarse=False):
         def _matcher(name):
-            if any([name.startswith(n) for n in ('cls_token', 'pos_embed', 'patch_embed')]):
+            if any(
+                name.startswith(n)
+                for n in ('cls_token', 'pos_embed', 'patch_embed')
+            ):
                 return 0
             elif name.startswith('blocks.'):
                 return int(name.split('.')[1]) + 1
@@ -291,6 +306,7 @@ class Cait(nn.Module):
                 return len(self.blocks)
             else:
                 return float('inf')
+
         return _matcher
 
     @torch.jit.ignore
@@ -313,7 +329,7 @@ class Cait(nn.Module):
         else:
             x = self.blocks(x)
         cls_tokens = self.cls_token.expand(x.shape[0], -1, -1)
-        for i, blk in enumerate(self.blocks_token_only):
+        for blk in self.blocks_token_only:
             cls_tokens = blk(x, cls_tokens)
         x = torch.cat((cls_tokens, x), dim=1)
         x = self.norm(x)
@@ -333,88 +349,77 @@ class Cait(nn.Module):
 def checkpoint_filter_fn(state_dict, model=None):
     if 'model' in state_dict:
         state_dict = state_dict['model']
-    checkpoint_no_module = {}
-    for k, v in state_dict.items():
-        checkpoint_no_module[k.replace('module.', '')] = v
-    return checkpoint_no_module
+    return {k.replace('module.', ''): v for k, v in state_dict.items()}
 
 
 def _create_cait(variant, pretrained=False, **kwargs):
     if kwargs.get('features_only', None):
         raise RuntimeError('features_only not implemented for Vision Transformer models.')
 
-    model = build_model_with_cfg(
-        Cait, variant, pretrained,
+    return build_model_with_cfg(
+        Cait,
+        variant,
+        pretrained,
         pretrained_filter_fn=checkpoint_filter_fn,
-        **kwargs)
-    return model
+        **kwargs
+    )
 
 
 @register_model
 def cait_xxs24_224(pretrained=False, **kwargs):
     model_args = dict(patch_size=16, embed_dim=192, depth=24, num_heads=4, init_values=1e-5, **kwargs)
-    model = _create_cait('cait_xxs24_224', pretrained=pretrained, **model_args)
-    return model
+    return _create_cait('cait_xxs24_224', pretrained=pretrained, **model_args)
 
 
 @register_model
 def cait_xxs24_384(pretrained=False, **kwargs):
     model_args = dict(patch_size=16, embed_dim=192, depth=24, num_heads=4, init_values=1e-5, **kwargs)
-    model = _create_cait('cait_xxs24_384', pretrained=pretrained, **model_args)
-    return model
+    return _create_cait('cait_xxs24_384', pretrained=pretrained, **model_args)
 
 
 @register_model
 def cait_xxs36_224(pretrained=False, **kwargs):
     model_args = dict(patch_size=16, embed_dim=192, depth=36, num_heads=4, init_values=1e-5, **kwargs)
-    model = _create_cait('cait_xxs36_224', pretrained=pretrained, **model_args)
-    return model
+    return _create_cait('cait_xxs36_224', pretrained=pretrained, **model_args)
 
 
 @register_model
 def cait_xxs36_384(pretrained=False, **kwargs):
     model_args = dict(patch_size=16, embed_dim=192, depth=36, num_heads=4, init_values=1e-5, **kwargs)
-    model = _create_cait('cait_xxs36_384', pretrained=pretrained, **model_args)
-    return model
+    return _create_cait('cait_xxs36_384', pretrained=pretrained, **model_args)
 
 
 @register_model
 def cait_xs24_384(pretrained=False, **kwargs):
     model_args = dict(patch_size=16, embed_dim=288, depth=24, num_heads=6, init_values=1e-5, **kwargs)
-    model = _create_cait('cait_xs24_384', pretrained=pretrained, **model_args)
-    return model
+    return _create_cait('cait_xs24_384', pretrained=pretrained, **model_args)
 
 
 @register_model
 def cait_s24_224(pretrained=False, **kwargs):
     model_args = dict(patch_size=16, embed_dim=384, depth=24, num_heads=8, init_values=1e-5, **kwargs)
-    model = _create_cait('cait_s24_224', pretrained=pretrained, **model_args)
-    return model
+    return _create_cait('cait_s24_224', pretrained=pretrained, **model_args)
 
 
 @register_model
 def cait_s24_384(pretrained=False, **kwargs):
     model_args = dict(patch_size=16, embed_dim=384, depth=24, num_heads=8, init_values=1e-5, **kwargs)
-    model = _create_cait('cait_s24_384', pretrained=pretrained, **model_args)
-    return model
+    return _create_cait('cait_s24_384', pretrained=pretrained, **model_args)
 
 
 @register_model
 def cait_s36_384(pretrained=False, **kwargs):
     model_args = dict(patch_size=16, embed_dim=384, depth=36, num_heads=8, init_values=1e-6, **kwargs)
-    model = _create_cait('cait_s36_384', pretrained=pretrained, **model_args)
-    return model
+    return _create_cait('cait_s36_384', pretrained=pretrained, **model_args)
 
 
 @register_model
 def cait_m36_384(pretrained=False, **kwargs):
     model_args = dict(patch_size=16, embed_dim=768, depth=36, num_heads=16, init_values=1e-6, **kwargs)
-    model = _create_cait('cait_m36_384', pretrained=pretrained, **model_args)
-    return model
+    return _create_cait('cait_m36_384', pretrained=pretrained, **model_args)
 
 
 @register_model
 def cait_m48_448(pretrained=False, **kwargs):
     model_args = dict(patch_size=16, embed_dim=768, depth=48, num_heads=16, init_values=1e-6, **kwargs)
-    model = _create_cait('cait_m48_448', pretrained=pretrained, **model_args)
-    return model
+    return _create_cait('cait_m48_448', pretrained=pretrained, **model_args)

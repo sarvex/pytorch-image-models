@@ -74,12 +74,11 @@ def _get_input_size(model=None, model_name='', target=None):
     if fixed_input_size:
         return input_size
 
-    if min_input_size:
-        if target and max(input_size) > target:
+    if target and max(input_size) > target:
+        if min_input_size:
             input_size = min_input_size
-    else:
-        if target and max(input_size) > target:
-            input_size = tuple([min(x, target) for x in input_size])
+        else:
+            input_size = tuple(min(x, target) for x in input_size)
     return input_size
 
 
@@ -111,7 +110,7 @@ def test_model_backward(model_name, batch_size):
         pytest.skip("Fixed input size model > limit.")
 
     model = create_model(model_name, pretrained=False, num_classes=42)
-    num_params = sum([x.numel() for x in model.parameters()])
+    num_params = sum(x.numel() for x in model.parameters())
     model.train()
 
     inputs = torch.randn((batch_size, *input_size))
@@ -121,7 +120,9 @@ def test_model_backward(model_name, batch_size):
     outputs.mean().backward()
     for n, x in model.named_parameters():
         assert x.grad is not None, f'No gradient for {n}'
-    num_grad = sum([x.grad.numel() for x in model.parameters() if x.grad is not None])
+    num_grad = sum(
+        x.grad.numel() for x in model.parameters() if x.grad is not None
+    )
 
     assert outputs.shape[-1] == 42
     assert num_params == num_grad, 'Some parameters are missing gradients'
@@ -138,17 +139,18 @@ def test_model_default_cfgs(model_name, batch_size):
     state_dict = model.state_dict()
     cfg = model.default_cfg
 
-    pool_size = cfg['pool_size']
     input_size = model.default_cfg['input_size']
 
-    if all([x <= MAX_FWD_OUT_SIZE for x in input_size]) and \
-            not any([fnmatch.fnmatch(model_name, x) for x in EXCLUDE_FILTERS]):
+    if all(x <= MAX_FWD_OUT_SIZE for x in input_size) and not any(
+        fnmatch.fnmatch(model_name, x) for x in EXCLUDE_FILTERS
+    ):
         # output sizes only checked if default res <= 448 * 448 to keep resource down
-        input_size = tuple([min(x, MAX_FWD_OUT_SIZE) for x in input_size])
+        input_size = tuple(min(x, MAX_FWD_OUT_SIZE) for x in input_size)
         input_tensor = torch.randn((batch_size, *input_size))
 
         # test forward_features (always unpooled)
         outputs = model.forward_features(input_tensor)
+        pool_size = cfg['pool_size']
         assert outputs.shape[-1] == pool_size[-1] and outputs.shape[-2] == pool_size[-2], 'unpooled feature shape != config'
 
         # test forward after deleting the classifier, output should be poooled, size(-1) == model.num_features
@@ -179,7 +181,7 @@ def test_model_default_cfgs(model_name, batch_size):
         if not isinstance(classifier, (tuple, list)):
             classifier = classifier,
         for c in classifier:
-            assert c + ".weight" in state_dict.keys(), f'{c} not in model params'
+            assert f"{c}.weight" in state_dict.keys(), f'{c} not in model params'
 
     # check first conv(s) names match default_cfg
     first_conv = cfg['first_conv']
@@ -187,7 +189,7 @@ def test_model_default_cfgs(model_name, batch_size):
         first_conv = (first_conv,)
     assert isinstance(first_conv, (tuple, list))
     for fc in first_conv:
-        assert fc + ".weight" in state_dict.keys(), f'{fc} not in model params'
+        assert f"{fc}.weight" in state_dict.keys(), f'{fc} not in model params'
 
 
 @pytest.mark.timeout(300)
@@ -208,10 +210,7 @@ def test_model_default_cfgs_non_std(model_name, batch_size):
     feat_dim = getattr(model, 'feature_dim', None)
 
     outputs = model.forward_features(input_tensor)
-    if isinstance(outputs, (tuple, list)):
-        # cannot currently verify multi-tensor output.
-        pass
-    else:
+    if not isinstance(outputs, (tuple, list)):
         if feat_dim is None:
             feat_dim = -1 if outputs.ndim == 3 else 1
         assert outputs.shape[feat_dim] == model.num_features
@@ -239,7 +238,7 @@ def test_model_default_cfgs_non_std(model_name, batch_size):
         if not isinstance(classifier, (tuple, list)):
             classifier = classifier,
         for c in classifier:
-            assert c + ".weight" in state_dict.keys(), f'{c} not in model params'
+            assert f"{c}.weight" in state_dict.keys(), f'{c} not in model params'
 
     # check first conv(s) names match default_cfg
     first_conv = cfg['first_conv']
@@ -247,7 +246,7 @@ def test_model_default_cfgs_non_std(model_name, batch_size):
         first_conv = (first_conv,)
     assert isinstance(first_conv, (tuple, list))
     for fc in first_conv:
-        assert fc + ".weight" in state_dict.keys(), f'{fc} not in model params'
+        assert f"{fc}.weight" in state_dict.keys(), f'{fc} not in model params'
 
 
 if 'GITHUB_ACTIONS' not in os.environ:
@@ -351,13 +350,12 @@ if not _IS_MAC:
             output_node_indices = [-graph_node_names.index(node_name) for node_name in output_node_names]
             train_return_nodes = [train_nodes[ix] for ix in output_node_indices]
 
-        fx_model = create_feature_extractor(
+        return create_feature_extractor(
             model,
             train_return_nodes=train_return_nodes,
             eval_return_nodes=eval_return_nodes,
             tracer_kwargs=tracer_kwargs,
         )
-        return fx_model
 
 
     EXCLUDE_FX_FILTERS = ['vit_gi*']
@@ -427,7 +425,7 @@ if not _IS_MAC:
 
         model = create_model(model_name, pretrained=False, num_classes=42)
         model.train()
-        num_params = sum([x.numel() for x in model.parameters()])
+        num_params = sum(x.numel() for x in model.parameters())
         if 'GITHUB_ACTIONS' in os.environ and num_params > 100e6:
             pytest.skip("Skipping FX backward test on model with more than 100M params.")
 
@@ -438,7 +436,9 @@ if not _IS_MAC:
         outputs.mean().backward()
         for n, x in model.named_parameters():
             assert x.grad is not None, f'No gradient for {n}'
-        num_grad = sum([x.grad.numel() for x in model.parameters() if x.grad is not None])
+        num_grad = sum(
+            x.grad.numel() for x in model.parameters() if x.grad is not None
+        )
 
         assert outputs.shape[-1] == 42
         assert num_params == num_grad, 'Some parameters are missing gradients'

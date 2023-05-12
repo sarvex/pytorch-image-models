@@ -201,9 +201,12 @@ class SplitTransposeBlock(nn.Module):
         self.width = width
         self.num_scales = max(1, num_scales - 1)
 
-        convs = []
-        for i in range(self.num_scales):
-            convs.append(create_conv2d(width, width, kernel_size=3, depthwise=True, bias=conv_bias))
+        convs = [
+            create_conv2d(
+                width, width, kernel_size=3, depthwise=True, bias=conv_bias
+            )
+            for _ in range(self.num_scales)
+        ]
         self.convs = nn.ModuleList(convs)
 
         self.pos_embd = None
@@ -511,12 +514,14 @@ def checkpoint_filter_fn(state_dict, model):
 
 
 def _create_edgenext(variant, pretrained=False, **kwargs):
-    model = build_model_with_cfg(
-        EdgeNeXt, variant, pretrained,
+    return build_model_with_cfg(
+        EdgeNeXt,
+        variant,
+        pretrained,
         pretrained_filter_fn=checkpoint_filter_fn,
         feature_cfg=dict(out_indices=(0, 1, 2, 3), flatten_sequential=True),
-        **kwargs)
-    return model
+        **kwargs
+    )
 
 
 @register_model

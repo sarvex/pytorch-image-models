@@ -118,9 +118,7 @@ def _pad_arg(x, n):
         x = (x,)
     curr_n = len(x)
     pad_n = n - curr_n
-    if pad_n <= 0:
-        return x[:n]
-    return tuple(x + (x[-1],) * pad_n)
+    return x[:n] if pad_n <= 0 else tuple(x + (x[-1],) * pad_n)
 
 
 @dataclass
@@ -187,13 +185,21 @@ def _cs3_cfg(
             kernel_size=6, stride=2, padding=2, pool='')
     else:
         stem_cfg = CspStemCfg(
-            out_chs=tuple([make_divisible(c * width_multiplier) for c in (32, 64)]),
-            kernel_size=3, stride=2, pool='')
+            out_chs=tuple(
+                make_divisible(c * width_multiplier) for c in (32, 64)
+            ),
+            kernel_size=3,
+            stride=2,
+            pool='',
+        )
     return CspModelCfg(
         stem=stem_cfg,
         stages=CspStagesCfg(
-            out_chs=tuple([make_divisible(c * width_multiplier) for c in (128, 256, 512, 1024)]),
-            depth=tuple([int(d * depth_multiplier) for d in (3, 6, 9, 3)]),
+            out_chs=tuple(
+                make_divisible(c * width_multiplier)
+                for c in (128, 256, 512, 1024)
+            ),
+            depth=tuple(int(d * depth_multiplier) for d in (3, 6, 9, 3)),
             stride=2,
             bottle_ratio=bottle_ratio,
             block_ratio=0.5,
@@ -572,8 +578,7 @@ class CrossStage(nn.Module):
         xs, xb = x.split(self.expand_chs // 2, dim=1)
         xb = self.blocks(xb)
         xb = self.conv_transition_b(xb).contiguous()
-        out = self.conv_transition(torch.cat([xs, xb], dim=1))
-        return out
+        return self.conv_transition(torch.cat([xs, xb], dim=1))
 
 
 class CrossStage3(nn.Module):
@@ -647,8 +652,7 @@ class CrossStage3(nn.Module):
         x = self.conv_exp(x)
         x1, x2 = x.split(self.expand_chs // 2, dim=1)
         x1 = self.blocks(x1)
-        out = self.conv_transition(torch.cat([x1, x2], dim=1))
-        return out
+        return self.conv_transition(torch.cat([x1, x2], dim=1))
 
 
 class DarkStage(nn.Module):
@@ -919,15 +923,19 @@ class CspNet(nn.Module):
 
     @torch.jit.ignore
     def group_matcher(self, coarse=False):
-        matcher = dict(
+        return dict(
             stem=r'^stem',
-            blocks=r'^stages\.(\d+)' if coarse else [
+            blocks=r'^stages\.(\d+)'
+            if coarse
+            else [
                 (r'^stages\.(\d+)\.blocks\.(\d+)', None),
-                (r'^stages\.(\d+)\..*transition', MATCH_PREV_GROUP),  # map to last block in stage
+                (
+                    r'^stages\.(\d+)\..*transition',
+                    MATCH_PREV_GROUP,
+                ),  # map to last block in stage
                 (r'^stages\.(\d+)', (0,)),
-            ]
+            ],
         )
-        return matcher
 
     @torch.jit.ignore
     def set_grad_checkpointing(self, enable=True):

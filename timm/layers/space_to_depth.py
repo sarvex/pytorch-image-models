@@ -30,10 +30,7 @@ class SpaceToDepthJit(object):
 class SpaceToDepthModule(nn.Module):
     def __init__(self, no_jit=False):
         super().__init__()
-        if not no_jit:
-            self.op = SpaceToDepthJit()
-        else:
-            self.op = SpaceToDepth()
+        self.op = SpaceToDepthJit() if not no_jit else SpaceToDepth()
 
     def forward(self, x):
         return self.op(x)

@@ -20,6 +20,7 @@ Papers:
 
 Hacked together by / Copyright 2019, Ross Wightman
 """
+
 import random
 import math
 import re
@@ -31,7 +32,7 @@ import PIL
 import numpy as np
 
 
-_PIL_VER = tuple([int(x) for x in PIL.__version__.split('.')[:2]])
+_PIL_VER = tuple(int(x) for x in PIL.__version__.split('.')[:2])
 
 _FILL = (128, 128, 128)
 
@@ -151,18 +152,15 @@ def solarize_add(img, add, thresh=128, **__):
             lut.append(min(255, i + add))
         else:
             lut.append(i)
-    if img.mode in ("L", "RGB"):
-        if img.mode == "RGB" and len(lut) == 256:
-            lut = lut + lut + lut
-        return img.point(lut)
-    else:
+    if img.mode not in ("L", "RGB"):
         return img
+    if img.mode == "RGB" and len(lut) == 256:
+        lut = lut + lut + lut
+    return img.point(lut)
 
 
 def posterize(img, bits_to_keep, **__):
-    if bits_to_keep >= 8:
-        return img
-    return ImageOps.posterize(img, bits_to_keep)
+    return img if bits_to_keep >= 8 else ImageOps.posterize(img, bits_to_keep)
 
 
 def contrast(img, factor, **__):
@@ -387,7 +385,7 @@ class AugmentOp:
             if self.magnitude_std == float('inf'):
                 # inf == uniform sampling
                 magnitude = random.uniform(0, magnitude)
-            elif self.magnitude_std > 0:
+            else:
                 magnitude = random.gauss(magnitude, self.magnitude_std)
         # default upper_bound for the timm RA impl is _LEVEL_DENOM (10)
         # setting magnitude_max overrides this to allow M > 10 (behaviour closer to Google TF RA impl)
@@ -397,7 +395,7 @@ class AugmentOp:
         return self.aug_fn(img, *level_args, **self.kwargs)
 
     def __repr__(self):
-        fs = self.__class__.__name__ + f'(name={self.name}, p={self.prob}'
+        fs = f'{self.__class__.__name__}(name={self.name}, p={self.prob}'
         fs += f', m={self.magnitude}, mstd={self.magnitude_std}'
         if self.magnitude_max is not None:
             fs += f', mmax={self.magnitude_max}'
@@ -434,8 +432,7 @@ def auto_augment_policy_v0(hparams):
         [('Solarize', 0.6, 8), ('Equalize', 0.6, 1)],
         [('Color', 0.8, 6), ('Rotate', 0.4, 5)],
     ]
-    pc = [[AugmentOp(*a, hparams=hparams) for a in sp] for sp in policy]
-    return pc
+    return [[AugmentOp(*a, hparams=hparams) for a in sp] for sp in policy]
 
 
 def auto_augment_policy_v0r(hparams):
@@ -468,8 +465,7 @@ def auto_augment_policy_v0r(hparams):
         [('Solarize', 0.6, 8), ('Equalize', 0.6, 1)],
         [('Color', 0.8, 6), ('Rotate', 0.4, 5)],
     ]
-    pc = [[AugmentOp(*a, hparams=hparams) for a in sp] for sp in policy]
-    return pc
+    return [[AugmentOp(*a, hparams=hparams) for a in sp] for sp in policy]
 
 
 def auto_augment_policy_original(hparams):
@@ -501,8 +497,7 @@ def auto_augment_policy_original(hparams):
         [('Color', 0.6, 4), ('Contrast', 1.0, 8)],
         [('Equalize', 0.8, 8), ('Equalize', 0.6, 3)],
     ]
-    pc = [[AugmentOp(*a, hparams=hparams) for a in sp] for sp in policy]
-    return pc
+    return [[AugmentOp(*a, hparams=hparams) for a in sp] for sp in policy]
 
 
 def auto_augment_policy_originalr(hparams):
@@ -534,8 +529,7 @@ def auto_augment_policy_originalr(hparams):
         [('Color', 0.6, 4), ('Contrast', 1.0, 8)],
         [('Equalize', 0.8, 8), ('Equalize', 0.6, 3)],
     ]
-    pc = [[AugmentOp(*a, hparams=hparams) for a in sp] for sp in policy]
-    return pc
+    return [[AugmentOp(*a, hparams=hparams) for a in sp] for sp in policy]
 
 
 def auto_augment_policy_3a(hparams):
@@ -544,8 +538,7 @@ def auto_augment_policy_3a(hparams):
         [('Desaturate', 1.0, 10)],  # grayscale at 10 magnitude
         [('GaussianBlurRand', 1.0, 10)],
     ]
-    pc = [[AugmentOp(*a, hparams=hparams) for a in sp] for sp in policy]
-    return pc
+    return [[AugmentOp(*a, hparams=hparams) for a in sp] for sp in policy]
 
 
 def auto_augment_policy(name='v0', hparams=None):
@@ -561,7 +554,7 @@ def auto_augment_policy(name='v0', hparams=None):
     elif name == '3a':
         return auto_augment_policy_3a(hparams)
     else:
-        assert False, 'Unknown AA policy (%s)' % name
+        assert False, f'Unknown AA policy ({name})'
 
 
 class AutoAugment:
@@ -576,7 +569,7 @@ class AutoAugment:
         return img
 
     def __repr__(self):
-        fs = self.__class__.__name__ + f'(policy='
+        fs = f'{self.__class__.__name__}(policy='
         for p in self.policy:
             fs += '\n\t['
             fs += ', '.join([str(op) for op in p])
@@ -755,7 +748,7 @@ class RandAugment:
         return img
 
     def __repr__(self):
-        fs = self.__class__.__name__ + f'(n={self.num_layers}, ops='
+        fs = f'{self.__class__.__name__}(n={self.num_layers}, ops='
         for op in self.ops:
             fs += f'\n\t{op}'
         fs += ')'
@@ -934,14 +927,14 @@ class AugMixAugment:
     def __call__(self, img):
         mixing_weights = np.float32(np.random.dirichlet([self.alpha] * self.width))
         m = np.float32(np.random.beta(self.alpha, self.alpha))
-        if self.blended:
-            mixed = self._apply_blended(img, mixing_weights, m)
-        else:
-            mixed = self._apply_basic(img, mixing_weights, m)
-        return mixed
+        return (
+            self._apply_blended(img, mixing_weights, m)
+            if self.blended
+            else self._apply_basic(img, mixing_weights, m)
+        )
 
     def __repr__(self):
-        fs = self.__class__.__name__ + f'(alpha={self.alpha}, width={self.width}, depth={self.depth}, ops='
+        fs = f'{self.__class__.__name__}(alpha={self.alpha}, width={self.width}, depth={self.depth}, ops='
         for op in self.ops:
             fs += f'\n\t{op}'
         fs += ')'

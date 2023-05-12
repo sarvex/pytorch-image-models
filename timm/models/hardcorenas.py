@@ -77,8 +77,12 @@ def hardcorenas_a(pretrained=False, **kwargs):
                 ['ir_r1_k5_s2_e6_c80_se0.25', 'ir_r1_k5_s1_e6_c80_se0.25'],
                 ['ir_r1_k5_s1_e6_c112_se0.25', 'ir_r1_k5_s1_e6_c112_se0.25'],
                 ['ir_r1_k5_s2_e6_c192_se0.25', 'ir_r1_k5_s1_e6_c192_se0.25'], ['cn_r1_k1_s1_c960']]
-    model = _gen_hardcorenas(pretrained=pretrained, variant='hardcorenas_a', arch_def=arch_def, **kwargs)
-    return model
+    return _gen_hardcorenas(
+        pretrained=pretrained,
+        variant='hardcorenas_a',
+        arch_def=arch_def,
+        **kwargs
+    )
 
 
 @register_model
@@ -91,8 +95,12 @@ def hardcorenas_b(pretrained=False, **kwargs):
                 ['ir_r1_k5_s1_e3_c112', 'ir_r1_k3_s1_e3_c112', 'ir_r1_k3_s1_e3_c112', 'ir_r1_k3_s1_e3_c112'],
                 ['ir_r1_k5_s2_e6_c192_se0.25', 'ir_r1_k5_s1_e6_c192_se0.25', 'ir_r1_k3_s1_e3_c192_se0.25'],
                 ['cn_r1_k1_s1_c960']]
-    model = _gen_hardcorenas(pretrained=pretrained, variant='hardcorenas_b', arch_def=arch_def, **kwargs)
-    return model
+    return _gen_hardcorenas(
+        pretrained=pretrained,
+        variant='hardcorenas_b',
+        arch_def=arch_def,
+        **kwargs
+    )
 
 
 @register_model
@@ -105,8 +113,12 @@ def hardcorenas_c(pretrained=False, **kwargs):
                 ['ir_r1_k5_s1_e6_c112_se0.25', 'ir_r1_k3_s1_e3_c112', 'ir_r1_k3_s1_e3_c112', 'ir_r1_k3_s1_e3_c112'],
                 ['ir_r1_k5_s2_e6_c192_se0.25', 'ir_r1_k5_s1_e6_c192_se0.25', 'ir_r1_k3_s1_e3_c192_se0.25'],
                 ['cn_r1_k1_s1_c960']]
-    model = _gen_hardcorenas(pretrained=pretrained, variant='hardcorenas_c', arch_def=arch_def, **kwargs)
-    return model
+    return _gen_hardcorenas(
+        pretrained=pretrained,
+        variant='hardcorenas_c',
+        arch_def=arch_def,
+        **kwargs
+    )
 
 
 @register_model
@@ -120,8 +132,12 @@ def hardcorenas_d(pretrained=False, **kwargs):
                  'ir_r1_k5_s1_e3_c112_se0.25'],
                 ['ir_r1_k5_s2_e6_c192_se0.25', 'ir_r1_k5_s1_e6_c192_se0.25', 'ir_r1_k5_s1_e6_c192_se0.25',
                  'ir_r1_k3_s1_e6_c192_se0.25'], ['cn_r1_k1_s1_c960']]
-    model = _gen_hardcorenas(pretrained=pretrained, variant='hardcorenas_d', arch_def=arch_def, **kwargs)
-    return model
+    return _gen_hardcorenas(
+        pretrained=pretrained,
+        variant='hardcorenas_d',
+        arch_def=arch_def,
+        **kwargs
+    )
 
 
 @register_model
@@ -134,8 +150,12 @@ def hardcorenas_e(pretrained=False, **kwargs):
                  'ir_r1_k5_s1_e3_c112_se0.25'],
                 ['ir_r1_k5_s2_e6_c192_se0.25', 'ir_r1_k5_s1_e6_c192_se0.25', 'ir_r1_k5_s1_e6_c192_se0.25',
                  'ir_r1_k3_s1_e6_c192_se0.25'], ['cn_r1_k1_s1_c960']]
-    model = _gen_hardcorenas(pretrained=pretrained, variant='hardcorenas_e', arch_def=arch_def, **kwargs)
-    return model
+    return _gen_hardcorenas(
+        pretrained=pretrained,
+        variant='hardcorenas_e',
+        arch_def=arch_def,
+        **kwargs
+    )
 
 
 @register_model
@@ -149,5 +169,9 @@ def hardcorenas_f(pretrained=False, **kwargs):
                  'ir_r1_k3_s1_e3_c112_se0.25'],
                 ['ir_r1_k5_s2_e6_c192_se0.25', 'ir_r1_k5_s1_e6_c192_se0.25', 'ir_r1_k3_s1_e6_c192_se0.25',
                  'ir_r1_k3_s1_e6_c192_se0.25'], ['cn_r1_k1_s1_c960']]
-    model = _gen_hardcorenas(pretrained=pretrained, variant='hardcorenas_f', arch_def=arch_def, **kwargs)
-    return model
+    return _gen_hardcorenas(
+        pretrained=pretrained,
+        variant='hardcorenas_f',
+        arch_def=arch_def,
+        **kwargs
+    )

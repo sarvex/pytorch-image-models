@@ -5,6 +5,7 @@ An inference and train step benchmark script for timm models.
 
 Hacked together by Ross Wightman (https://github.com/rwightman)
 """
+
 import argparse
 import csv
 import json
@@ -25,19 +26,13 @@ from timm.optim import create_optimizer_v2
 from timm.utils import setup_default_logging, set_jit_fuser, decay_batch_step, check_batch_size_retry, ParseKwargs
 
 has_apex = False
-try:
+with suppress(ImportError):
     from apex import amp
     has_apex = True
-except ImportError:
-    pass
-
 has_native_amp = False
-try:
+with suppress(AttributeError):
     if getattr(torch.cuda.amp, 'autocast') is not None:
         has_native_amp = True
-except AttributeError:
-    pass
-
 try:
     from deepspeed.profiling.flops_profiler import get_model_profile
     has_deepspeed_profiling = True
@@ -166,11 +161,11 @@ def cuda_timestamp(sync=False, device=None):
 
 
 def count_params(model: nn.Module):
-    return sum([m.numel() for m in model.parameters()])
+    return sum(m.numel() for m in model.parameters())
 
 
 def resolve_precision(precision: str):
-    assert precision in ('amp', 'amp_bfloat16', 'float16', 'bfloat16', 'float32')
+    assert precision in {'amp', 'amp_bfloat16', 'float16', 'bfloat16', 'float32'}
     amp_dtype = None  # amp disabled
     model_dtype = torch.float32
     data_dtype = torch.float32
@@ -178,12 +173,12 @@ def resolve_precision(precision: str):
         amp_dtype = torch.float16
     elif precision == 'amp_bfloat16':
         amp_dtype = torch.bfloat16
-    elif precision == 'float16':
-        model_dtype = torch.float16
-        data_dtype = torch.float16
     elif precision == 'bfloat16':
         model_dtype = torch.bfloat16
         data_dtype = torch.bfloat16
+    elif precision == 'float16':
+        model_dtype = torch.float16
+        data_dtype = torch.float16
     return amp_dtype, model_dtype, data_dtype
 
 
@@ -351,7 +346,7 @@ class InferenceBenchmarkRunner(BenchmarkRunner):
         retries = 0 if self.compiled else 2  # skip profiling if model is scripted
         while retries:
             retries -= 1
-            try:
+            with suppress(RuntimeError):
                 if has_deepspeed_profiling:
                     macs, _ = profile_deepspeed(self.model, self.input_size)
                     results['gmacs'] = round(macs / 1e9, 2)
@@ -359,9 +354,6 @@ class InferenceBenchmarkRunner(BenchmarkRunner):
                     macs, activations = profile_fvcore(self.model, self.input_size, force_cpu=not retries)
                     results['gmacs'] = round(macs / 1e9, 2)
                     results['macts'] = round(activations / 1e6, 2)
-            except RuntimeError as e:
-                pass
-
         _logger.info(
             f"Inference benchmark of {self.model_name} done. "
             f"{results['samples_per_sec']:.2f} samples/sec, {results['step_time']:.2f} ms/step")
@@ -543,14 +535,12 @@ def _try_run(
         no_batch_size_retry=False
 ):
     batch_size = initial_batch_size
-    results = dict()
     error_str = 'Unknown'
     while batch_size:
         try:
             torch.cuda.empty_cache()
             bench = bench_fn(model_name=model_name, batch_size=batch_size, **bench_kwargs)
-            results = bench.run()
-            return results
+            return bench.run()
         except RuntimeError as e:
             error_str = str(e)
             _logger.error(f'"{error_str}" while running benchmark.')
@@ -561,8 +551,7 @@ def _try_run(
                 break
         batch_size = decay_batch_step(batch_size)
         _logger.warning(f'Reducing batch size to {batch_size} for retry.')
-    results['error'] = error_str
-    return results
+    return {'error': error_str}
 
 
 def benchmark(args):
@@ -646,19 +635,18 @@ def main():
         model_cfgs = [(n, None) for n in model_names]
 
     if len(model_cfgs):
-        _logger.info('Running bulk validation on these pretrained models: {}'.format(', '.join(model_names)))
+        _logger.info(
+            f"Running bulk validation on these pretrained models: {', '.join(model_names)}"
+        )
         results = []
-        try:
+        with suppress(KeyboardInterrupt):
             for m, _ in model_cfgs:
                 if not m:
                     continue
                 args.model = m
-                r = benchmark(args)
-                if r:
+                if r := benchmark(args):
                     results.append(r)
                 time.sleep(10)
-        except KeyboardInterrupt as e:
-            pass
         sort_key = 'infer_samples_per_sec'
         if 'train' in args.bench:
             sort_key = 'train_samples_per_sec'

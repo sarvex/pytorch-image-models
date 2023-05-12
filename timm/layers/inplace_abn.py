@@ -48,16 +48,14 @@ class InplaceAbn(nn.Module):
             if isinstance(act_layer, str):
                 assert act_layer in ('leaky_relu', 'elu', 'identity', '')
                 self.act_name = act_layer if act_layer else 'identity'
+            elif act_layer == nn.ELU:
+                self.act_name = 'elu'
+            elif act_layer == nn.LeakyReLU:
+                self.act_name = 'leaky_relu'
+            elif act_layer is None or act_layer == nn.Identity:
+                self.act_name = 'identity'
             else:
-                # convert act layer passed as type to string
-                if act_layer == nn.ELU:
-                    self.act_name = 'elu'
-                elif act_layer == nn.LeakyReLU:
-                    self.act_name = 'leaky_relu'
-                elif act_layer is None or act_layer == nn.Identity:
-                    self.act_name = 'identity'
-                else:
-                    assert False, f'Invalid act layer {act_layer.__name__} for IABN'
+                assert False, f'Invalid act layer {act_layer.__name__} for IABN'
         else:
             self.act_name = 'identity'
         self.act_param = act_param

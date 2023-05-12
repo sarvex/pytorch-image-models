@@ -2,6 +2,7 @@
 Hacked together by / Copyright 2020 Ross Wightman
 """
 
+
 import fnmatch
 import re
 import sys
@@ -20,8 +21,8 @@ _module_to_models = defaultdict(set)  # dict of sets to check membership of mode
 _model_to_module = {}  # mapping of model names to module names
 _model_entrypoints = {}  # mapping of model names to architecture entrypoint fns
 _model_has_pretrained = set()  # set of model names that have pretrained weight url present
-_model_default_cfgs = dict()  # central repo for model arch -> default cfg objects
-_model_pretrained_cfgs = dict()  # central repo for model arch.tag -> pretrained cfgs
+_model_default_cfgs = {}
+_model_pretrained_cfgs = {}
 _model_with_tags = defaultdict(list)  # shortcut to map each model arch to all model + tag names
 
 

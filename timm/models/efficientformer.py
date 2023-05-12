@@ -80,11 +80,10 @@ class Attention(torch.nn.Module):
     def get_attention_biases(self, device: torch.device) -> torch.Tensor:
         if torch.jit.is_tracing() or self.training:
             return self.attention_biases[:, self.attention_bias_idxs]
-        else:
-            device_key = str(device)
-            if device_key not in self.attention_bias_cache:
-                self.attention_bias_cache[device_key] = self.attention_biases[:, self.attention_bias_idxs]
-            return self.attention_bias_cache[device_key]
+        device_key = str(device)
+        if device_key not in self.attention_bias_cache:
+            self.attention_bias_cache[device_key] = self.attention_biases[:, self.attention_bias_idxs]
+        return self.attention_bias_cache[device_key]
 
     def forward(self, x):  # x (B,N,C)
         B, N, C = x.shape
@@ -410,8 +409,8 @@ class EfficientFormer(nn.Module):
     def _init_weights(self, m):
         if isinstance(m, nn.Linear):
             trunc_normal_(m.weight, std=.02)
-            if isinstance(m, nn.Linear) and m.bias is not None:
-                nn.init.constant_(m.bias, 0)
+        if isinstance(m, nn.Linear) and m.bias is not None:
+            nn.init.constant_(m.bias, 0)
 
     @torch.jit.ignore
     def no_weight_decay(self):
@@ -419,11 +418,10 @@ class EfficientFormer(nn.Module):
 
     @torch.jit.ignore
     def group_matcher(self, coarse=False):
-        matcher = dict(
+        return dict(
             stem=r'^stem',  # stem and embed
-            blocks=[(r'^stages\.(\d+)', None), (r'^norm', (99999,))]
+            blocks=[(r'^stages\.(\d+)', None), (r'^norm', (99999,))],
         )
-        return matcher
 
     @torch.jit.ignore
     def set_grad_checkpointing(self, enable=True):
@@ -522,11 +520,13 @@ default_cfgs = generate_default_cfgs({
 
 
 def _create_efficientformer(variant, pretrained=False, **kwargs):
-    model = build_model_with_cfg(
-        EfficientFormer, variant, pretrained,
+    return build_model_with_cfg(
+        EfficientFormer,
+        variant,
+        pretrained,
         pretrained_filter_fn=_checkpoint_filter_fn,
-        **kwargs)
-    return model
+        **kwargs
+    )
 
 
 @register_model

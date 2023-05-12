@@ -14,6 +14,7 @@ NVIDIA CUDA specific speedups adopted from NVIDIA Apex examples
 
 Hacked together by / Copyright 2020 Ross Wightman (https://github.com/rwightman)
 """
+
 import argparse
 import logging
 import os
@@ -47,12 +48,9 @@ except ImportError:
     has_apex = False
 
 has_native_amp = False
-try:
+with suppress(AttributeError):
     if getattr(torch.cuda.amp, 'autocast') is not None:
         has_native_amp = True
-except AttributeError:
-    pass
-
 try:
     import wandb
     has_wandb = True

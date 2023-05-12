@@ -85,8 +85,8 @@ class ImageNetInfo(DatasetInfo):
         return self.label_name_to_description(label, detailed=detailed)
 
     def label_name_to_description(self, label: str, detailed: bool = False) -> str:
-        if detailed:
-            description = f'{self._lemmas[label]}: {self._definitions[label]}'
-        else:
-            description = f'{self._lemmas[label]}'
-        return description
+        return (
+            f'{self._lemmas[label]}: {self._definitions[label]}'
+            if detailed
+            else f'{self._lemmas[label]}'
+        )

@@ -49,8 +49,7 @@ class Mixed3a(nn.Module):
     def forward(self, x):
         x0 = self.maxpool(x)
         x1 = self.conv(x)
-        out = torch.cat((x0, x1), 1)
-        return out
+        return torch.cat((x0, x1), 1)
 
 
 class Mixed4a(nn.Module):
@@ -72,8 +71,7 @@ class Mixed4a(nn.Module):
     def forward(self, x):
         x0 = self.branch0(x)
         x1 = self.branch1(x)
-        out = torch.cat((x0, x1), 1)
-        return out
+        return torch.cat((x0, x1), 1)
 
 
 class Mixed5a(nn.Module):
@@ -85,8 +83,7 @@ class Mixed5a(nn.Module):
     def forward(self, x):
         x0 = self.conv(x)
         x1 = self.maxpool(x)
-        out = torch.cat((x0, x1), 1)
-        return out
+        return torch.cat((x0, x1), 1)
 
 
 class InceptionA(nn.Module):
@@ -115,8 +112,7 @@ class InceptionA(nn.Module):
         x1 = self.branch1(x)
         x2 = self.branch2(x)
         x3 = self.branch3(x)
-        out = torch.cat((x0, x1, x2, x3), 1)
-        return out
+        return torch.cat((x0, x1, x2, x3), 1)
 
 
 class ReductionA(nn.Module):
@@ -136,8 +132,7 @@ class ReductionA(nn.Module):
         x0 = self.branch0(x)
         x1 = self.branch1(x)
         x2 = self.branch2(x)
-        out = torch.cat((x0, x1, x2), 1)
-        return out
+        return torch.cat((x0, x1, x2), 1)
 
 
 class InceptionB(nn.Module):
@@ -169,8 +164,7 @@ class InceptionB(nn.Module):
         x1 = self.branch1(x)
         x2 = self.branch2(x)
         x3 = self.branch3(x)
-        out = torch.cat((x0, x1, x2, x3), 1)
-        return out
+        return torch.cat((x0, x1, x2, x3), 1)
 
 
 class ReductionB(nn.Module):
@@ -195,8 +189,7 @@ class ReductionB(nn.Module):
         x0 = self.branch0(x)
         x1 = self.branch1(x)
         x2 = self.branch2(x)
-        out = torch.cat((x0, x1, x2), 1)
-        return out
+        return torch.cat((x0, x1, x2), 1)
 
 
 class InceptionC(nn.Module):
@@ -237,8 +230,7 @@ class InceptionC(nn.Module):
 
         x3 = self.branch3(x)
 
-        out = torch.cat((x0, x1, x2, x3), 1)
-        return out
+        return torch.cat((x0, x1, x2, x3), 1)
 
 
 class InceptionV4(nn.Module):

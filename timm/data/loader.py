@@ -222,10 +222,7 @@ def create_loader(
         persistent_workers=True,
         worker_seeding='all',
 ):
-    re_num_splits = 0
-    if re_split:
-        # apply RE to second half of batch if no aug split otherwise line up with aug split
-        re_num_splits = num_aug_splits or 2
+    re_num_splits = num_aug_splits or 2 if re_split else 0
     dataset.transform = create_transform(
         input_size,
         is_training=is_training,
@@ -324,7 +321,7 @@ class MultiEpochsDataLoader(torch.utils.data.DataLoader):
         return len(self.batch_sampler.sampler)
 
     def __iter__(self):
-        for i in range(len(self)):
+        for _ in range(len(self)):
             yield next(self.iterator)
 
 

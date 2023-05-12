@@ -142,22 +142,14 @@ class DualPathBlock(nn.Module):
         pass
 
     def forward(self, x) -> Tuple[torch.Tensor, torch.Tensor]:
-        if isinstance(x, tuple):
-            x_in = torch.cat(x, dim=1)
-        else:
-            x_in = x
+        x_in = torch.cat(x, dim=1) if isinstance(x, tuple) else x
         if self.c1x1_w_s1 is None and self.c1x1_w_s2 is None:
             # self.has_proj == False, torchscript requires condition on module == None
             x_s1 = x[0]
             x_s2 = x[1]
         else:
             # self.has_proj == True
-            if self.c1x1_w_s1 is not None:
-                # self.key_stride = 1
-                x_s = self.c1x1_w_s1(x_in)
-            else:
-                # self.key_stride = 2
-                x_s = self.c1x1_w_s2(x_in)
+            x_s = self.c1x1_w_s2(x_in) if self.c1x1_w_s1 is None else self.c1x1_w_s1(x_in)
             x_s1 = x_s[:, :self.num_1x1_c, :, :]
             x_s2 = x_s[:, self.num_1x1_c:, :, :]
         x_in = self.c1x1_a(x_in)
@@ -218,7 +210,9 @@ class DPN(nn.Module):
         blocks['conv2_1'] = DualPathBlock(num_init_features, r, r, bw, inc, groups, 'proj', b)
         in_chs = bw + 3 * inc
         for i in range(2, k_sec[0] + 1):
-            blocks['conv2_' + str(i)] = DualPathBlock(in_chs, r, r, bw, inc, groups, 'normal', b)
+            blocks[f'conv2_{str(i)}'] = DualPathBlock(
+                in_chs, r, r, bw, inc, groups, 'normal', b
+            )
             in_chs += inc
         self.feature_info += [dict(num_chs=in_chs, reduction=4, module=f'features.conv2_{k_sec[0]}')]
 
@@ -229,7 +223,9 @@ class DPN(nn.Module):
         blocks['conv3_1'] = DualPathBlock(in_chs, r, r, bw, inc, groups, 'down', b)
         in_chs = bw + 3 * inc
         for i in range(2, k_sec[1] + 1):
-            blocks['conv3_' + str(i)] = DualPathBlock(in_chs, r, r, bw, inc, groups, 'normal', b)
+            blocks[f'conv3_{str(i)}'] = DualPathBlock(
+                in_chs, r, r, bw, inc, groups, 'normal', b
+            )
             in_chs += inc
         self.feature_info += [dict(num_chs=in_chs, reduction=8, module=f'features.conv3_{k_sec[1]}')]
 
@@ -240,7 +236,9 @@ class DPN(nn.Module):
         blocks['conv4_1'] = DualPathBlock(in_chs, r, r, bw, inc, groups, 'down', b)
         in_chs = bw + 3 * inc
         for i in range(2, k_sec[2] + 1):
-            blocks['conv4_' + str(i)] = DualPathBlock(in_chs, r, r, bw, inc, groups, 'normal', b)
+            blocks[f'conv4_{str(i)}'] = DualPathBlock(
+                in_chs, r, r, bw, inc, groups, 'normal', b
+            )
             in_chs += inc
         self.feature_info += [dict(num_chs=in_chs, reduction=16, module=f'features.conv4_{k_sec[2]}')]
 
@@ -251,7 +249,9 @@ class DPN(nn.Module):
         blocks['conv5_1'] = DualPathBlock(in_chs, r, r, bw, inc, groups, 'down', b)
         in_chs = bw + 3 * inc
         for i in range(2, k_sec[3] + 1):
-            blocks['conv5_' + str(i)] = DualPathBlock(in_chs, r, r, bw, inc, groups, 'normal', b)
+            blocks[f'conv5_{str(i)}'] = DualPathBlock(
+                in_chs, r, r, bw, inc, groups, 'normal', b
+            )
             in_chs += inc
         self.feature_info += [dict(num_chs=in_chs, reduction=32, module=f'features.conv5_{k_sec[3]}')]
 
@@ -267,14 +267,18 @@ class DPN(nn.Module):
 
     @torch.jit.ignore
     def group_matcher(self, coarse=False):
-        matcher = dict(
+        return dict(
             stem=r'^features\.conv1',
             blocks=[
-                (r'^features\.conv(\d+)' if coarse else r'^features\.conv(\d+)_(\d+)', None),
-                (r'^features\.conv5_bn_ac', (99999,))
-            ]
+                (
+                    r'^features\.conv(\d+)'
+                    if coarse
+                    else r'^features\.conv(\d+)_(\d+)',
+                    None,
+                ),
+                (r'^features\.conv5_bn_ac', (99999,)),
+            ],
         )
-        return matcher
 
     @torch.jit.ignore
     def set_grad_checkpointing(self, enable=True):
@@ -299,9 +303,8 @@ class DPN(nn.Module):
             x = F.dropout(x, p=self.drop_rate, training=self.training)
         if pre_logits:
             return x.flatten(1)
-        else:
-            x = self.classifier(x)
-            return self.flatten(x)
+        x = self.classifier(x)
+        return self.flatten(x)
 
     def forward(self, x):
         x = self.forward_features(x)
